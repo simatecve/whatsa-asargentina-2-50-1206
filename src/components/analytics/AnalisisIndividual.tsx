@@ -21,13 +21,20 @@ const AnalisisIndividual = () => {
   const [loading, setLoading] = useState<boolean>(true);
   const [loadingStats, setLoadingStats] = useState<boolean>(false);
 
-  // Cargar instancias
+  // Cargar instancias del usuario logueado
   useEffect(() => {
     const fetchInstancias = async () => {
       try {
+        const { data: { session } } = await supabase.auth.getSession();
+        if (!session?.user) {
+          toast.error("Usuario no autenticado");
+          return;
+        }
+
         const { data, error } = await supabase
           .from("instancias")
           .select("id, nombre")
+          .eq("user_id", session.user.id)
           .order("nombre");
 
         if (error) throw error;
