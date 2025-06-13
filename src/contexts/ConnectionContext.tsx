@@ -12,7 +12,6 @@ export const ConnectionProvider = ({ children }: { children: ReactNode }) => {
   const [currentQRCode, setCurrentQRCode] = useState<string | null>(null);
   const [currentInstanceName, setCurrentInstanceName] = useState("");
   const [modalOpen, setModalOpen] = useState(false);
-  const [isInitialized, setIsInitialized] = useState(false);
 
   const { userData } = useUserData();
   
@@ -41,23 +40,14 @@ export const ConnectionProvider = ({ children }: { children: ReactNode }) => {
   };
 
   useEffect(() => {
-    // Mark as initialized once we have user data or confirmed no user
-    if (userData !== undefined) {
-      setIsInitialized(true);
-      if (userData) {
-        fetchInstances();
-      }
+    // Only fetch instances when we have user data
+    if (userData) {
+      fetchInstances();
+    } else if (userData === null) {
+      // If userData is explicitly null (no user), clear instances and stop loading
+      setInstances([]);
     }
   }, [userData, fetchInstances]);
-
-  // Don't render children until context is properly initialized
-  if (!isInitialized) {
-    return (
-      <div className="flex justify-center items-center py-8">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-azul-600"></div>
-      </div>
-    );
-  }
 
   return (
     <ConnectionContext.Provider 

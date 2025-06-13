@@ -8,21 +8,6 @@ interface InstanceListContainerProps {
 }
 
 export const InstanceListContainer = ({ onCreateNew }: InstanceListContainerProps) => {
-  // Add a try-catch to handle the hook usage safely
-  let connectionData;
-  try {
-    connectionData = useConnection();
-  } catch (error) {
-    console.error("Error using connection context:", error);
-    return (
-      <div className="space-y-4">
-        <div className="text-center py-8">
-          <p className="text-muted-foreground">Error al cargar las conexiones. Por favor, recarga la página.</p>
-        </div>
-      </div>
-    );
-  }
-
   const { 
     instances, 
     loading, 
@@ -36,15 +21,15 @@ export const InstanceListContainer = ({ onCreateNew }: InstanceListContainerProp
     formatDate,
     getStatusColor,
     userData
-  } = connectionData;
+  } = useConnection();
 
   const handleColorChange = async (instanceName: string, newColor: string) => {
     // Refresh instances to get updated color
     await fetchInstances();
   };
 
-  // Show loading skeleton while context is initializing
-  if (!userData && loading) {
+  // Show loading skeleton while fetching data
+  if (loading) {
     return (
       <div className="space-y-4">
         <Skeleton className="h-10 w-full" />

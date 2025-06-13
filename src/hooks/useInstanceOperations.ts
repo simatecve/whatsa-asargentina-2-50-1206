@@ -24,6 +24,13 @@ export const useInstanceOperations = (
   const [connectingToCRM, setConnectingToCRM] = useState<Record<string, boolean>>({});
 
   const fetchInstances = async () => {
+    // Don't fetch if no user data
+    if (!userData) {
+      setInstances([]);
+      setLoading(false);
+      return;
+    }
+
     setLoading(true);
     try {
       const data = await fetchUserInstances();
