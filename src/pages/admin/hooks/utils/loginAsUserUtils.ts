@@ -24,75 +24,45 @@ export const loginAsUser = async (user: Usuario): Promise<void> => {
       return;
     }
 
-    const loadingToast = toast.loading(`Generando acceso para ${user.nombre}...`);
+    const loadingToast = toast.loading(`Cambiando sesión a ${user.nombre}...`);
 
     try {
-      // Verificar que el usuario existe en auth.users
-      const { data: userData, error: listError } = await supabase.auth.admin.listUsers();
+      // Obtener el token de administrador actual
+      const { data: { session: currentSession } } = await supabase.auth.getSession();
       
-      if (listError) {
-        console.error('Error listando usuarios:', listError);
+      if (!currentSession?.access_token) {
         toast.dismiss(loadingToast);
-        toast.error("Error al verificar usuario");
+        toast.error("No se encontró sesión de administrador válida");
         return;
       }
 
-      const targetAuthUser = userData?.users?.find((u: any) => u.email === user.email);
-      
-      if (!targetAuthUser) {
-        toast.dismiss(loadingToast);
-        toast.error("Usuario no encontrado");
-        return;
-      }
-
-      console.log("Usuario encontrado, generando link de acceso...");
-
-      // Generar link mágico para el usuario objetivo
-      const { data: linkData, error: linkError } = await supabase.auth.admin.generateLink({
-        type: 'magiclink',
-        email: user.email,
-        options: {
-          redirectTo: `${window.location.origin}/dashboard`
+      // Llamar a la función edge de admin-login-as-user
+      const { data, error } = await supabase.functions.invoke('admin-login-as-user', {
+        body: { targetUserEmail: user.email },
+        headers: {
+          Authorization: `Bearer ${currentSession.access_token}`
         }
       });
 
-      if (linkError || !linkData) {
-        console.error('Error generando link:', linkError);
+      if (error) {
+        console.error('Error en función edge:', error);
         toast.dismiss(loadingToast);
-        toast.error("Error al generar acceso");
+        toast.error(`Error: ${error.message}`);
         return;
       }
 
-      // Extraer tokens del action_link
-      const actionLink = linkData.properties?.action_link;
-      if (!actionLink) {
+      if (!data.success || !data.session) {
         toast.dismiss(loadingToast);
-        toast.error("No se pudo generar el enlace de acceso");
+        toast.error("No se pudo generar la sesión del usuario");
         return;
       }
 
-      console.log("Link generado:", actionLink);
-
-      // Extraer tokens de la URL
-      const url = new URL(actionLink);
-      const fragment = url.hash.substring(1); // Remover el #
-      const params = new URLSearchParams(fragment);
-      
-      const accessToken = params.get('access_token');
-      const refreshToken = params.get('refresh_token');
-
-      if (!accessToken || !refreshToken) {
-        toast.dismiss(loadingToast);
-        toast.error("No se pudieron extraer los tokens de acceso");
-        return;
-      }
-
-      console.log("Tokens extraídos correctamente, estableciendo sesión...");
+      console.log("Estableciendo nueva sesión...");
 
       // Establecer la nueva sesión
       const { error: sessionError } = await supabase.auth.setSession({
-        access_token: accessToken,
-        refresh_token: refreshToken
+        access_token: data.session.access_token,
+        refresh_token: data.session.refresh_token
       });
 
       if (sessionError) {
@@ -111,7 +81,7 @@ export const loginAsUser = async (user: Usuario): Promise<void> => {
       }, 1000);
       
     } catch (functionError: any) {
-      console.error("Error en login como usuario:", functionError);
+      console.error("Error en función de login:", functionError);
       toast.dismiss(loadingToast);
       
       const errorMessage = functionError?.message || 

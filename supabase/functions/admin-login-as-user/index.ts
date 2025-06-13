@@ -74,7 +74,7 @@ serve(async (req) => {
 
     console.log('Generando acceso para usuario:', targetUserEmail)
 
-    // Verificar que el usuario objetivo existe y obtener su user_id de auth
+    // Verificar que el usuario objetivo existe
     const { data: targetUserAuth, error: userError } = await supabaseClient.auth.admin.listUsers()
     
     if (userError) {
@@ -89,7 +89,7 @@ serve(async (req) => {
     
     if (!targetAuthUser) {
       return new Response(
-        JSON.stringify({ error: 'Usuario no encontrado en auth' }),
+        JSON.stringify({ error: 'Usuario no encontrado' }),
         { status: 404, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       )
     }
@@ -103,7 +103,7 @@ serve(async (req) => {
 
     if (!targetUser) {
       return new Response(
-        JSON.stringify({ error: 'Usuario no encontrado en tabla usuarios' }),
+        JSON.stringify({ error: 'Usuario no encontrado en sistema' }),
         { status: 404, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       )
     }
@@ -116,46 +116,41 @@ serve(async (req) => {
       )
     }
 
-    console.log('Generando tokens para usuario:', targetAuthUser.id)
+    console.log('Generando link mágico para usuario:', targetAuthUser.id)
 
-    // Generar tokens de acceso usando la API de admin
-    const { data: tokenData, error: tokenError } = await supabaseClient.auth.admin.generateLink({
-      type: 'recovery',
+    // Generar link mágico para el usuario objetivo
+    const { data: linkData, error: linkError } = await supabaseClient.auth.admin.generateLink({
+      type: 'magiclink',
       email: targetUserEmail,
       options: {
         redirectTo: `${req.headers.get('origin') || 'http://localhost:3000'}/dashboard`
       }
     })
 
-    if (tokenError || !tokenData) {
-      console.error('Error generando tokens:', tokenError)
+    if (linkError || !linkData) {
+      console.error('Error generando link:', linkError)
       return new Response(
         JSON.stringify({ error: 'Error generando tokens de acceso' }),
         { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       )
     }
 
-    console.log('Tokens generados exitosamente')
+    console.log('Link generado exitosamente')
 
     // Extraer tokens del action_link
-    const actionLink = tokenData.properties?.action_link
+    const actionLink = linkData.properties?.action_link
     if (!actionLink) {
       return new Response(
-        JSON.stringify({ error: 'No se pudo generar link de acceso' }),
+        JSON.stringify({ error: 'No se pudo generar enlace de acceso' }),
         { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       )
     }
 
-    // Los tokens están en el hash del URL
-    const urlParts = actionLink.split('#')
-    if (urlParts.length < 2) {
-      return new Response(
-        JSON.stringify({ error: 'Link de acceso inválido' }),
-        { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      )
-    }
-
-    const params = new URLSearchParams(urlParts[1])
+    // Extraer tokens de la URL
+    const url = new URL(actionLink)
+    const fragment = url.hash.substring(1) // Remover el #
+    const params = new URLSearchParams(fragment)
+    
     const accessToken = params.get('access_token')
     const refreshToken = params.get('refresh_token')
 

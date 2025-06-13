@@ -48,7 +48,7 @@ export const UserTableRow = ({ user, onEdit, onDelete, onLoginAsUser }: UserTabl
               size="sm"
               onClick={() => onLoginAsUser(user)}
               className="text-blue-600 hover:text-blue-700"
-              title={`Hacer login como ${user.nombre}`}
+              title={`Ingresar como ${user.nombre}`}
             >
               <LogIn className="h-4 w-4" />
             </Button>
