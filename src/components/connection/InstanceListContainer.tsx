@@ -7,6 +7,12 @@ interface InstanceListContainerProps {
 }
 
 export const InstanceListContainer = ({ onCreateNew }: InstanceListContainerProps) => {
+  const context = useConnection();
+  
+  if (!context) {
+    return <div>Cargando...</div>;
+  }
+
   const { 
     instances, 
     loading, 
@@ -20,7 +26,7 @@ export const InstanceListContainer = ({ onCreateNew }: InstanceListContainerProp
     formatDate,
     getStatusColor,
     userData
-  } = useConnection();
+  } = context;
 
   const handleColorChange = async (instanceName: string, newColor: string) => {
     // Refresh instances to get updated color
