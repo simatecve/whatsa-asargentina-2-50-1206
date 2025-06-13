@@ -40,14 +40,8 @@ export const ConnectionProvider = ({ children }: { children: ReactNode }) => {
   };
 
   useEffect(() => {
-    // Only fetch instances when we have user data
-    if (userData) {
-      fetchInstances();
-    } else if (userData === null) {
-      // If userData is explicitly null (no user), clear instances and stop loading
-      setInstances([]);
-    }
-  }, [userData, fetchInstances]);
+    fetchInstances();
+  }, []);
 
   return (
     <ConnectionContext.Provider 

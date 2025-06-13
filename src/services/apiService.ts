@@ -279,7 +279,6 @@ export const fetchUserInstances = async () => {
   const { data, error } = await supabase
     .from("instancias")
     .select("*")
-    .eq("user_id", userData.user.id)
     .order("fecha_creacion", { ascending: false });
 
   if (error) {
