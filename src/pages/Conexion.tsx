@@ -4,7 +4,6 @@ import { fetchAPIConfig } from "@/services/apiService";
 import QRModal from "@/components/QRModal";
 import { ConnectionTabs } from "@/components/connection/ConnectionTabs";
 import { ConnectionProvider, useConnection } from "@/contexts/ConnectionContext";
-import { toast } from "sonner";
 
 const ConexionContent = () => {
   const [activeTab, setActiveTab] = useState("instances");
@@ -23,18 +22,9 @@ const ConexionContent = () => {
       setApiConfigExists(configExists);
       
       console.log("¿Configuración válida?", configExists);
-      
-      if (configExists) {
-        console.log("Configuración válida encontrada");
-        toast.success("Configuración de API Evolution verificada correctamente");
-      } else {
-        console.log("No hay configuración válida");
-        toast.error("Configuración de API Evolution no encontrada en la base de datos");
-      }
     } catch (error) {
       console.error("Error checking API config:", error);
       setApiConfigExists(false);
-      toast.error("Error al verificar la configuración de API");
     } finally {
       setCheckingConfig(false);
     }
