@@ -1,7 +1,8 @@
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import KanbanColumn from "./KanbanColumn";
 import KanbanColumnManager from "./KanbanColumnManager";
+import { LeadSearch } from "./LeadSearch";
 import { Lead } from "@/types/lead";
 import { KanbanColumn as KanbanColumnType } from "@/types/kanban";
 import { useKanbanColumns } from "@/hooks/useKanbanColumns";
@@ -17,6 +18,7 @@ interface KanbanBoardProps {
 const KanbanBoard: React.FC<KanbanBoardProps> = ({ leads, onUpdateStatus, onLeadClick }) => {
   const [draggingLead, setDraggingLead] = useState<Lead | null>(null);
   const [localLeads, setLocalLeads] = useState<Lead[]>(leads);
+  const [searchTerm, setSearchTerm] = useState("");
   const { columns, loading, refreshColumns } = useKanbanColumns();
 
   // Sync local leads with props whenever they change
@@ -24,9 +26,25 @@ const KanbanBoard: React.FC<KanbanBoardProps> = ({ leads, onUpdateStatus, onLead
     setLocalLeads(leads);
   }, [leads]);
 
-  // Group leads by status using dynamic columns
+  // Filter leads based on search term
+  const filteredLeads = useMemo(() => {
+    if (!searchTerm.trim()) {
+      return localLeads;
+    }
+
+    const term = searchTerm.toLowerCase();
+    return localLeads.filter(lead => {
+      const name = (lead.pushname || "").toLowerCase();
+      const number = (lead.numero || "").replace(/@s\.whatsapp\.net$/, "").toLowerCase();
+      const instance = (lead.instancia || "").toLowerCase();
+      
+      return name.includes(term) || number.includes(term) || instance.includes(term);
+    });
+  }, [localLeads, searchTerm]);
+
+  // Group filtered leads by status using dynamic columns
   const leadsByStatus = columns.reduce((acc, column) => {
-    acc[column.status_key] = localLeads.filter(lead => lead.status === column.status_key);
+    acc[column.status_key] = filteredLeads.filter(lead => lead.status === column.status_key);
     return acc;
   }, {} as Record<string, Lead[]>);
 
@@ -120,6 +138,10 @@ const KanbanBoard: React.FC<KanbanBoardProps> = ({ leads, onUpdateStatus, onLead
     }
   };
 
+  const handleSearch = (term: string) => {
+    setSearchTerm(term);
+  };
+
   if (loading) {
     return (
       <div className="h-full flex items-center justify-center">
@@ -133,10 +155,22 @@ const KanbanBoard: React.FC<KanbanBoardProps> = ({ leads, onUpdateStatus, onLead
 
   return (
     <div className="h-full overflow-x-auto">
-      {/* Header with column manager */}
-      <div className="flex justify-between items-center mb-4 px-2">
-        <h2 className="text-lg font-semibold">Kanban de Leads</h2>
-        <KanbanColumnManager onColumnsChange={refreshColumns} />
+      {/* Header with search, title and column manager */}
+      <div className="flex flex-col space-y-4 mb-4 px-2">
+        <div className="flex justify-between items-center">
+          <h2 className="text-lg font-semibold">Kanban de Leads</h2>
+          <KanbanColumnManager onColumnsChange={refreshColumns} />
+        </div>
+        
+        {/* Search component */}
+        <LeadSearch onSearch={handleSearch} />
+        
+        {/* Search results summary */}
+        {searchTerm && (
+          <div className="text-sm text-gray-600">
+            Mostrando {filteredLeads.length} de {localLeads.length} leads que coinciden con "{searchTerm}"
+          </div>
+        )}
       </div>
 
       <div className="flex h-full space-x-4 pb-4 min-w-max">
