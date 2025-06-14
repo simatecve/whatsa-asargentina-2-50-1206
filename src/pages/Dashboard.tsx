@@ -1,5 +1,6 @@
+
 import { useState, useEffect } from "react";
-import { Link, useSearchParams } from "react-router-dom";
+import { Link, useSearchParams, useNavigate } from "react-router-dom";
 import { UserProfile } from "@/components/UserProfile";
 import { supabase } from "@/integrations/supabase/client";
 import { Card } from "@/components/ui/card";
@@ -17,6 +18,7 @@ import { returnToAdminPanel } from "@/pages/admin/hooks/utils/loginAsUserUtils";
 
 const Dashboard = () => {
   const [searchParams] = useSearchParams();
+  const navigate = useNavigate();
   const [userData, setUserData] = useState<{
     nombre: string;
     email: string;
@@ -51,6 +53,12 @@ const Dashboard = () => {
             console.error("Error fetching user data:", error);
             toast.error("Error al cargar los datos del usuario");
           } else if (data) {
+            // Si el usuario actual es administrador, redirigir al panel admin
+            if (data.perfil === 'administrador') {
+              navigate('/admin');
+              return;
+            }
+            
             setUserData(data);
             
             // Mostrar botón de regreso solo si hay admin guardado Y el usuario actual NO es admin
@@ -79,7 +87,7 @@ const Dashboard = () => {
     });
 
     return () => subscription.unsubscribe();
-  }, []);
+  }, [navigate]);
 
   // Refrescar estadísticas cuando los datos del usuario cambien
   useEffect(() => {
