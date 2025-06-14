@@ -1,4 +1,3 @@
-
 import React from "react";
 import {
   Dialog,
@@ -6,14 +5,19 @@ import {
   DialogHeader,
   DialogTitle,
   DialogDescription,
+  DialogFooter,
 } from "@/components/ui/dialog";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { LogIn } from "lucide-react";
 import { Usuario } from "./types";
 
 interface UserDetailsModalProps {
   user: Usuario | null;
   isOpen: boolean;
   onClose: () => void;
+  onLoginAsUser: (user: Usuario) => void;
+  isLoggingIn: boolean;
 }
 
 const formatDate = (dateString: string | null | undefined) => {
@@ -27,7 +31,7 @@ const formatDate = (dateString: string | null | undefined) => {
   });
 };
 
-export const UserDetailsModal: React.FC<UserDetailsModalProps> = ({ user, isOpen, onClose }) => {
+export const UserDetailsModal: React.FC<UserDetailsModalProps> = ({ user, isOpen, onClose, onLoginAsUser, isLoggingIn }) => {
   if (!user) return null;
 
   return (
@@ -69,6 +73,16 @@ export const UserDetailsModal: React.FC<UserDetailsModalProps> = ({ user, isOpen
             <span className="col-span-2 font-mono break-all">{user.id}</span>
           </div>
         </div>
+        <DialogFooter>
+          <Button
+            onClick={() => onLoginAsUser(user)}
+            disabled={user.perfil === 'administrador' || isLoggingIn}
+            size="sm"
+          >
+            <LogIn className="mr-2 h-4 w-4" />
+            {isLoggingIn ? 'Iniciando sesión...' : 'Login como usuario'}
+          </Button>
+        </DialogFooter>
       </DialogContent>
     </Dialog>
   );

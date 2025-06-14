@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
@@ -9,6 +10,7 @@ import { UsersTable } from "./components/UsersTable";
 import { useUserOperations } from "./hooks/useUserOperations";
 import { Usuario, FormData } from "./components/types";
 import { UserDetailsModal } from "./components/UserDetailsModal";
+import { loginAsUser } from "./hooks/utils/loginAsUserUtils";
 
 const UsuariosAdmin = () => {
   const [users, setUsers] = useState<Usuario[]>([]);
@@ -25,6 +27,7 @@ const UsuariosAdmin = () => {
   });
   const [isDetailsModalOpen, setIsDetailsModalOpen] = useState(false);
   const [viewingUser, setViewingUser] = useState<Usuario | null>(null);
+  const [isLoggingIn, setIsLoggingIn] = useState(false);
 
   const fetchUsers = async () => {
     setLoading(true);
@@ -104,6 +107,12 @@ const UsuariosAdmin = () => {
     setIsDetailsModalOpen(true);
   };
 
+  const handleLoginAsUser = async (user: Usuario) => {
+    setIsLoggingIn(true);
+    await loginAsUser(user);
+    setIsLoggingIn(false);
+  };
+
   const onSaveUser = () => {
     handleSaveUser(formData, editUser, setOpen);
   };
@@ -174,6 +183,8 @@ const UsuariosAdmin = () => {
         user={viewingUser}
         isOpen={isDetailsModalOpen}
         onClose={() => setIsDetailsModalOpen(false)}
+        onLoginAsUser={handleLoginAsUser}
+        isLoggingIn={isLoggingIn}
       />
     </div>
   );
