@@ -14,12 +14,12 @@ export const CampanasEmptyState = ({ estado, onCreateNew }: CampanasEmptyStatePr
         return "";
       case "pendiente":
         return "pendientes";
+      case "completada":
+        return "enviadas";
       case "enviada":
         return "enviadas";
       case "borrador":
         return "en borrador";
-      case "completada":
-        return "completadas";
       default:
         return estado;
     }
