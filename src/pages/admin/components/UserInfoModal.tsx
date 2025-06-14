@@ -3,8 +3,10 @@ import React from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
 import { Usuario } from "./types";
-import { User, Mail, Calendar, Shield } from "lucide-react";
+import { User, Mail, Calendar, Shield, LogIn } from "lucide-react";
+import { loginAsUser } from "../hooks/utils/loginAsUserUtils";
 
 interface UserInfoModalProps {
   user: Usuario | null;
@@ -24,6 +26,10 @@ export const UserInfoModal = ({ user, open, onClose }: UserInfoModalProps) => {
       hour: '2-digit',
       minute: '2-digit'
     });
+  };
+
+  const handleLoginAsUser = async () => {
+    await loginAsUser(user);
   };
 
   return (
@@ -104,6 +110,27 @@ export const UserInfoModal = ({ user, open, onClose }: UserInfoModalProps) => {
               </div>
             </CardContent>
           </Card>
+
+          {/* Acciones */}
+          {user.perfil !== 'administrador' && (
+            <Card>
+              <CardHeader>
+                <CardTitle className="text-lg">Acciones de Administrador</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <Button 
+                  onClick={handleLoginAsUser}
+                  className="w-full bg-blue-600 hover:bg-blue-700"
+                >
+                  <LogIn className="h-4 w-4 mr-2" />
+                  Acceder al Panel de {user.nombre}
+                </Button>
+                <p className="text-sm text-gray-500 mt-2">
+                  Esto te permitirá ver el panel desde la perspectiva de este usuario
+                </p>
+              </CardContent>
+            </Card>
+          )}
         </div>
       </DialogContent>
     </Dialog>
