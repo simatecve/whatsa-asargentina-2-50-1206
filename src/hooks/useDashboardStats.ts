@@ -1,6 +1,5 @@
 import { useState, useEffect, useCallback } from "react";
 import { supabase } from "@/integrations/supabase/client";
-import { useSearchParams } from "react-router-dom";
 import { toast } from "sonner";
 
 interface DashboardStats {
@@ -17,7 +16,6 @@ interface DashboardStats {
 }
 
 export const useDashboardStats = () => {
-  const [searchParams] = useSearchParams();
   const [stats, setStats] = useState<DashboardStats>({
     totalInstances: 0,
     connectedInstances: 0,
@@ -39,25 +37,15 @@ export const useDashboardStats = () => {
       setLoading(true);
       setError(null);
 
-      let currentUserId: string | null = null;
-
-      // Verificar si estamos simulando un usuario
-      const simulateUserId = searchParams.get('simulate_user');
-      
-      if (simulateUserId) {
-        console.log("Usando usuario simulado:", simulateUserId);
-        currentUserId = simulateUserId;
-      } else {
-        // Obtener usuario actual de la sesión
-        const { data: { user } } = await supabase.auth.getUser();
-        if (!user) {
-          console.log("No hay usuario autenticado");
-          setLoading(false);
-          return;
-        }
-        currentUserId = user.id;
+      // Obtener usuario actual de la sesión (sin simulación)
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) {
+        console.log("No hay usuario autenticado");
+        setLoading(false);
+        return;
       }
 
+      const currentUserId = user.id;
       console.log("Usuario encontrado:", currentUserId);
 
       // Obtener estadísticas de instancias
@@ -195,7 +183,7 @@ export const useDashboardStats = () => {
     } finally {
       setLoading(false);
     }
-  }, [searchParams]);
+  }, []);
 
   useEffect(() => {
     fetchStats();

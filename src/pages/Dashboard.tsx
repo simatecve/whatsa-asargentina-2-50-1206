@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { Link, useSearchParams } from "react-router-dom";
 import { UserProfile } from "@/components/UserProfile";
@@ -25,13 +24,8 @@ const Dashboard = () => {
     created_at?: string;
   } | null>(null);
   const [loading, setLoading] = useState(true);
-  const [isSimulatingUser, setIsSimulatingUser] = useState(false);
+  const [showAdminReturn, setShowAdminReturn] = useState(false);
   
-  // Verificar si estamos simulando un usuario
-  const simulateUserId = searchParams.get('simulate_user');
-  const userEmail = searchParams.get('user_email');
-  const userName = searchParams.get('user_name');
-
   const { stats, loading: statsLoading, error: statsError, refetch } = useDashboardStats();
   const { suscripcionActiva, limits, isExpired } = useSubscriptionValidation();
 
@@ -40,47 +34,31 @@ const Dashboard = () => {
       try {
         setLoading(true);
         
-        // Si estamos simulando un usuario, usar los datos de la URL
-        if (simulateUserId && userEmail && userName) {
-          console.log("Simulando usuario:", { simulateUserId, userEmail, userName });
-          setIsSimulatingUser(true);
-          
-          // Buscar los datos completos del usuario simulado
-          const { data: simulatedUserData, error } = await supabase
+        // Verificar si hay datos de admin guardados (indica que estamos como otro usuario)
+        const adminUserId = localStorage.getItem('admin_user_id');
+        
+        // Obtener sesión actual
+        const { data: { session } } = await supabase.auth.getSession();
+        
+        if (session?.user) {
+          const { data, error } = await supabase
             .from("usuarios")
             .select("*")
-            .eq("user_id", simulateUserId)
+            .eq("user_id", session.user.id)
             .single();
           
           if (error) {
-            console.error("Error fetching simulated user data:", error);
-            // Usar datos básicos de la URL si no se puede obtener de la BD
-            setUserData({
-              nombre: decodeURIComponent(userName),
-              email: decodeURIComponent(userEmail),
-              perfil: 'usuario'
-            });
-          } else {
-            setUserData(simulatedUserData);
-          }
-          
-          toast.success(`Viendo panel de ${decodeURIComponent(userName)}`);
-        } else {
-          // Funcionamiento normal - obtener sesión actual
-          const { data: { session } } = await supabase.auth.getSession();
-          
-          if (session?.user) {
-            const { data, error } = await supabase
-              .from("usuarios")
-              .select("*")
-              .eq("user_id", session.user.id)
-              .single();
+            console.error("Error fetching user data:", error);
+            toast.error("Error al cargar los datos del usuario");
+          } else if (data) {
+            setUserData(data);
             
-            if (error) {
-              console.error("Error fetching user data:", error);
-              toast.error("Error al cargar los datos del usuario");
-            } else if (data) {
-              setUserData(data);
+            // Mostrar botón de regreso solo si hay admin guardado Y el usuario actual NO es admin
+            setShowAdminReturn(adminUserId && data.perfil !== 'administrador');
+            
+            // Mostrar mensaje de éxito solo si venimos de admin panel
+            if (adminUserId && data.perfil !== 'administrador') {
+              toast.success(`Sesión iniciada como ${data.nombre}`);
             }
           }
         }
@@ -93,17 +71,15 @@ const Dashboard = () => {
 
     fetchUserData();
 
-    // Solo configurar listener de auth si NO estamos simulando
-    if (!simulateUserId) {
-      const { data: { subscription } } = supabase.auth.onAuthStateChange((_, session) => {
-        if (session) {
-          fetchUserData();
-        }
-      });
+    // Configurar listener de auth
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_, session) => {
+      if (session) {
+        fetchUserData();
+      }
+    });
 
-      return () => subscription.unsubscribe();
-    }
-  }, [simulateUserId, userEmail, userName]);
+    return () => subscription.unsubscribe();
+  }, []);
 
   // Refrescar estadísticas cuando los datos del usuario cambien
   useEffect(() => {
@@ -209,14 +185,14 @@ const Dashboard = () => {
 
   return (
     <div className="space-y-6">
-      {/* Alerta de simulación */}
-      {isSimulatingUser && (
+      {/* Alerta de acceso desde admin panel */}
+      {showAdminReturn && (
         <div className="bg-blue-50 border border-blue-200 p-4 rounded-lg">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2">
               <AlertTriangle className="h-5 w-5 text-blue-600" />
               <span className="text-blue-800 font-medium">
-                Simulando sesión de usuario: {userData?.nombre}
+                Has accedido desde el panel de administrador
               </span>
             </div>
             <Button
@@ -235,13 +211,10 @@ const Dashboard = () => {
       {userData && (
         <div className="bg-gradient-to-r from-azul-100 to-azul-50 dark:from-azul-900 dark:to-gray-900 p-6 rounded-lg border border-azul-200 dark:border-azul-800 shadow-sm">
           <h1 className="text-2xl font-bold tracking-tight text-azul-700 dark:text-azul-300">
-            {isSimulatingUser ? `Panel de ${userData.nombre}` : `¡Bienvenido de vuelta, ${userData.nombre}!`}
+            ¡Bienvenido de vuelta, {userData.nombre}!
           </h1>
           <p className="text-muted-foreground mt-1">
-            {isSimulatingUser 
-              ? `Estás viendo el panel desde la perspectiva de ${userData.nombre}`
-              : "Aquí tienes un resumen de tu actividad y el estado de tus instancias de WhatsApp."
-            }
+            Aquí tienes un resumen de tu actividad y el estado de tus instancias de WhatsApp.
           </p>
         </div>
       )}
