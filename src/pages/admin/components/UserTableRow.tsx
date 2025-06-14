@@ -3,23 +3,21 @@ import React from "react";
 import { TableCell, TableRow } from "@/components/ui/table";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Edit, Trash2, LogIn } from "lucide-react";
+import { Edit, Trash2, Eye } from "lucide-react";
 import { Usuario } from "./types";
 
 interface UserTableRowProps {
   user: Usuario;
   onEdit: (user: Usuario) => void;
   onDelete: (userId: string) => void;
-  onLoginAsUser: (user: Usuario) => void;
+  onViewDetails: (user: Usuario) => void;
 }
 
-export const UserTableRow = ({ user, onEdit, onDelete, onLoginAsUser }: UserTableRowProps) => {
+export const UserTableRow = ({ user, onEdit, onDelete, onViewDetails }: UserTableRowProps) => {
   const formatDate = (dateString: string | null) => {
     if (!dateString) return "N/A";
     return new Date(dateString).toLocaleDateString('es-ES');
   };
-
-  const canLoginAsUser = user.perfil !== 'administrador';
 
   return (
     <TableRow>
@@ -38,21 +36,18 @@ export const UserTableRow = ({ user, onEdit, onDelete, onLoginAsUser }: UserTabl
           <Button
             variant="outline"
             size="sm"
+            onClick={() => onViewDetails(user)}
+            title="Ver detalles"
+          >
+            <Eye className="h-4 w-4" />
+          </Button>
+          <Button
+            variant="outline"
+            size="sm"
             onClick={() => onEdit(user)}
           >
             <Edit className="h-4 w-4" />
           </Button>
-          {canLoginAsUser && (
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => onLoginAsUser(user)}
-              className="text-blue-600 hover:text-blue-700"
-              title={`Ingresar como ${user.nombre}`}
-            >
-              <LogIn className="h-4 w-4" />
-            </Button>
-          )}
           <Button
             variant="outline"
             size="sm"

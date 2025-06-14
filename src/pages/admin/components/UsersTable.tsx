@@ -8,7 +8,7 @@ interface UsersTableProps {
   loading: boolean;
   onEdit: (user: Usuario) => void;
   onDelete: (userId: string) => void;
-  onLoginAsUser: (user: Usuario) => void;
+  onViewDetails: (user: Usuario) => void;
 }
 
 export const UsersTable: React.FC<UsersTableProps> = ({
@@ -16,7 +16,7 @@ export const UsersTable: React.FC<UsersTableProps> = ({
   loading,
   onEdit,
   onDelete,
-  onLoginAsUser,
+  onViewDetails,
 }) => {
   return (
     <div className="bg-white dark:bg-gray-800 rounded-md border border-gray-200 dark:border-gray-700 overflow-hidden">
@@ -27,19 +27,20 @@ export const UsersTable: React.FC<UsersTableProps> = ({
               <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Nombre</th>
               <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Email</th>
               <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Perfil</th>
+              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Creado</th>
               <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Acciones</th>
             </tr>
           </thead>
           <tbody className="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
             {loading ? (
               <tr>
-                <td colSpan={4} className="px-6 py-4 text-center text-sm text-gray-500 dark:text-gray-400">
+                <td colSpan={5} className="px-6 py-4 text-center text-sm text-gray-500 dark:text-gray-400">
                   Cargando usuarios...
                 </td>
               </tr>
             ) : users.length === 0 ? (
               <tr>
-                <td colSpan={4} className="px-6 py-4 text-center text-sm text-gray-500 dark:text-gray-400">
+                <td colSpan={5} className="px-6 py-4 text-center text-sm text-gray-500 dark:text-gray-400">
                   No se encontraron usuarios
                 </td>
               </tr>
@@ -50,7 +51,7 @@ export const UsersTable: React.FC<UsersTableProps> = ({
                   user={user}
                   onEdit={onEdit}
                   onDelete={onDelete}
-                  onLoginAsUser={onLoginAsUser}
+                  onViewDetails={onViewDetails}
                 />
               ))
             )}

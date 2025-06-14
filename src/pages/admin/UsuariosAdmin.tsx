@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
@@ -9,6 +8,7 @@ import { UserFormDialog } from "./components/UserFormDialog";
 import { UsersTable } from "./components/UsersTable";
 import { useUserOperations } from "./hooks/useUserOperations";
 import { Usuario, FormData } from "./components/types";
+import { UserDetailsModal } from "./components/UserDetailsModal";
 
 const UsuariosAdmin = () => {
   const [users, setUsers] = useState<Usuario[]>([]);
@@ -23,6 +23,8 @@ const UsuariosAdmin = () => {
     password: "",
     perfil: "usuario"
   });
+  const [isDetailsModalOpen, setIsDetailsModalOpen] = useState(false);
+  const [viewingUser, setViewingUser] = useState<Usuario | null>(null);
 
   const fetchUsers = async () => {
     setLoading(true);
@@ -53,7 +55,7 @@ const UsuariosAdmin = () => {
     }
   };
 
-  const { saving, handleLoginAsUser, handleSaveUser, handleDeleteUser } = useUserOperations(fetchUsers);
+  const { saving, handleSaveUser, handleDeleteUser } = useUserOperations(fetchUsers);
 
   useEffect(() => {
     fetchUsers();
@@ -95,6 +97,11 @@ const UsuariosAdmin = () => {
       perfil: user.perfil || "usuario"
     });
     setOpen(true);
+  };
+
+  const openViewDetailsModal = (user: Usuario) => {
+    setViewingUser(user);
+    setIsDetailsModalOpen(true);
   };
 
   const onSaveUser = () => {
@@ -149,7 +156,7 @@ const UsuariosAdmin = () => {
         loading={loading}
         onEdit={openEditDialog}
         onDelete={handleDeleteUser}
-        onLoginAsUser={handleLoginAsUser}
+        onViewDetails={openViewDetailsModal}
       />
 
       <UserFormDialog
@@ -161,6 +168,12 @@ const UsuariosAdmin = () => {
         onInputChange={handleInputChange}
         onSelectChange={handleSelectChange}
         onSave={onSaveUser}
+      />
+
+      <UserDetailsModal
+        user={viewingUser}
+        isOpen={isDetailsModalOpen}
+        onClose={() => setIsDetailsModalOpen(false)}
       />
     </div>
   );
