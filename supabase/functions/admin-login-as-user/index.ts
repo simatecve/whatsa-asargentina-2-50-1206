@@ -8,14 +8,14 @@ const corsHeaders = {
 }
 
 serve(async (req) => {
+  console.log('Admin login as user request started')
+  
   if (req.method === 'OPTIONS') {
     return new Response('ok', { headers: corsHeaders })
   }
 
   try {
-    console.log('Admin login as user request started')
-    
-    const supabaseClient = createClient(
+    const supabaseAdmin = createClient(
       Deno.env.get('SUPABASE_URL') ?? '',
       Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? '',
       {
@@ -28,8 +28,9 @@ serve(async (req) => {
 
     const authHeader = req.headers.get('Authorization')
     if (!authHeader) {
+      console.error('No authorization header')
       return new Response(
-        JSON.stringify({ error: 'No autorizado - falta token' }),
+        JSON.stringify({ success: false, error: 'No autorizado - falta token' }),
         { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       )
     }
@@ -37,11 +38,11 @@ serve(async (req) => {
     const token = authHeader.replace('Bearer ', '')
     
     // Verificar que quien hace la petición es admin
-    const { data: { user }, error: authError } = await supabaseClient.auth.getUser(token)
+    const { data: { user }, error: authError } = await supabaseAdmin.auth.getUser(token)
     if (authError || !user) {
       console.error('Error de autenticación:', authError)
       return new Response(
-        JSON.stringify({ error: 'No autorizado' }),
+        JSON.stringify({ success: false, error: 'No autorizado' }),
         { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       )
     }
@@ -49,16 +50,16 @@ serve(async (req) => {
     console.log('Usuario autenticado:', user.email)
 
     // Verificar permisos de admin
-    const { data: adminUser } = await supabaseClient
+    const { data: adminUser, error: adminError } = await supabaseAdmin
       .from('usuarios')
       .select('perfil')
       .eq('user_id', user.id)
       .single()
 
-    if (!adminUser || adminUser.perfil !== 'administrador') {
-      console.error('Usuario sin permisos de admin')
+    if (adminError || !adminUser || adminUser.perfil !== 'administrador') {
+      console.error('Usuario sin permisos de admin:', adminError)
       return new Response(
-        JSON.stringify({ error: 'Sin permisos de administrador' }),
+        JSON.stringify({ success: false, error: 'Sin permisos de administrador' }),
         { status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       )
     }
@@ -67,114 +68,75 @@ serve(async (req) => {
 
     if (!targetUserEmail) {
       return new Response(
-        JSON.stringify({ error: 'Email de usuario requerido' }),
+        JSON.stringify({ success: false, error: 'Email de usuario requerido' }),
         { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       )
     }
 
     console.log('Generando acceso para usuario:', targetUserEmail)
 
-    // Verificar que el usuario objetivo existe
-    const { data: targetUserAuth, error: userError } = await supabaseClient.auth.admin.listUsers()
+    // Buscar el usuario objetivo en auth.users
+    const { data: targetUsers, error: listError } = await supabaseAdmin.auth.admin.listUsers()
     
-    if (userError) {
-      console.error('Error listando usuarios:', userError)
+    if (listError) {
+      console.error('Error listando usuarios:', listError)
       return new Response(
-        JSON.stringify({ error: 'Error al buscar usuario' }),
+        JSON.stringify({ success: false, error: 'Error al buscar usuario' }),
         { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       )
     }
 
-    const targetAuthUser = targetUserAuth.users.find(u => u.email === targetUserEmail)
+    const targetUser = targetUsers.users.find(u => u.email === targetUserEmail)
     
-    if (!targetAuthUser) {
+    if (!targetUser) {
+      console.error('Usuario no encontrado:', targetUserEmail)
       return new Response(
-        JSON.stringify({ error: 'Usuario no encontrado' }),
+        JSON.stringify({ success: false, error: 'Usuario no encontrado' }),
         { status: 404, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       )
     }
 
-    // Verificar datos del usuario en la tabla usuarios
-    const { data: targetUser } = await supabaseClient
+    // Verificar que no es admin
+    const { data: targetUserData } = await supabaseAdmin
       .from('usuarios')
-      .select('*')
-      .eq('user_id', targetAuthUser.id)
+      .select('perfil')
+      .eq('user_id', targetUser.id)
       .single()
 
-    if (!targetUser) {
+    if (targetUserData?.perfil === 'administrador') {
       return new Response(
-        JSON.stringify({ error: 'Usuario no encontrado en sistema' }),
-        { status: 404, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      )
-    }
-
-    // No permitir login como admin
-    if (targetUser.perfil === 'administrador') {
-      return new Response(
-        JSON.stringify({ error: 'No se puede hacer login como otro administrador' }),
+        JSON.stringify({ success: false, error: 'No se puede hacer login como otro administrador' }),
         { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       )
     }
 
-    console.log('Generando link mágico para usuario:', targetAuthUser.id)
+    console.log('Generando enlace mágico para:', targetUser.id)
 
-    // Generar link mágico para el usuario objetivo
-    const { data: linkData, error: linkError } = await supabaseClient.auth.admin.generateLink({
+    // Generar enlace mágico
+    const { data: linkData, error: linkError } = await supabaseAdmin.auth.admin.generateLink({
       type: 'magiclink',
       email: targetUserEmail,
       options: {
-        redirectTo: `${req.headers.get('origin') || 'http://localhost:3000'}/dashboard`
+        redirectTo: `${new URL(req.url).origin}/dashboard`
       }
     })
 
-    if (linkError || !linkData) {
-      console.error('Error generando link:', linkError)
+    if (linkError || !linkData?.properties?.action_link) {
+      console.error('Error generando enlace:', linkError)
       return new Response(
-        JSON.stringify({ error: 'Error generando tokens de acceso' }),
+        JSON.stringify({ success: false, error: 'Error generando enlace de acceso' }),
         { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       )
     }
 
-    console.log('Link generado exitosamente')
+    console.log('Enlace generado exitosamente')
 
-    // Extraer tokens del action_link
-    const actionLink = linkData.properties?.action_link
-    if (!actionLink) {
-      return new Response(
-        JSON.stringify({ error: 'No se pudo generar enlace de acceso' }),
-        { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      )
-    }
-
-    // Extraer tokens de la URL
-    const url = new URL(actionLink)
-    const fragment = url.hash.substring(1) // Remover el #
-    const params = new URLSearchParams(fragment)
-    
-    const accessToken = params.get('access_token')
-    const refreshToken = params.get('refresh_token')
-
-    if (!accessToken || !refreshToken) {
-      return new Response(
-        JSON.stringify({ error: 'No se pudieron extraer los tokens' }),
-        { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      )
-    }
-
-    console.log('Tokens extraídos correctamente')
-
+    // En lugar de intentar procesar tokens, simplemente redirigir al enlace mágico
     return new Response(
       JSON.stringify({
         success: true,
-        session: {
-          access_token: accessToken,
-          refresh_token: refreshToken
-        },
-        user: {
-          id: targetAuthUser.id,
-          email: targetAuthUser.email,
-          user_metadata: targetAuthUser.user_metadata || {}
-        }
+        redirectUrl: linkData.properties.action_link,
+        message: 'Enlace de acceso generado exitosamente'
       }),
       { 
         status: 200, 
@@ -185,7 +147,7 @@ serve(async (req) => {
   } catch (error) {
     console.error('Error en admin-login-as-user:', error)
     return new Response(
-      JSON.stringify({ error: 'Error interno del servidor', details: error.message }),
+      JSON.stringify({ success: false, error: 'Error interno del servidor' }),
       { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     )
   }

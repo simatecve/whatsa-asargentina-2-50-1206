@@ -27,68 +27,46 @@ export const loginAsUser = async (user: Usuario): Promise<void> => {
     const loadingToast = toast.loading(`Cambiando sesión a ${user.nombre}...`);
 
     try {
-      // Obtener el token de administrador actual
-      const { data: { session: currentSession } } = await supabase.auth.getSession();
-      
-      if (!currentSession?.access_token) {
-        toast.dismiss(loadingToast);
-        toast.error("No se encontró sesión de administrador válida");
-        return;
-      }
-
-      // Llamar a la función edge de admin-login-as-user
+      // Llamar a la función edge simplificada
       const { data, error } = await supabase.functions.invoke('admin-login-as-user', {
-        body: { targetUserEmail: user.email },
-        headers: {
-          Authorization: `Bearer ${currentSession.access_token}`
+        body: { 
+          targetUserEmail: user.email,
+          targetUserId: user.user_id || user.id
         }
       });
 
       if (error) {
         console.error('Error en función edge:', error);
         toast.dismiss(loadingToast);
-        toast.error(`Error: ${error.message}`);
+        toast.error(`Error al cambiar sesión: ${error.message}`);
         return;
       }
 
-      if (!data.success || !data.session) {
+      if (!data?.success) {
         toast.dismiss(loadingToast);
-        toast.error("No se pudo generar la sesión del usuario");
-        return;
-      }
-
-      console.log("Estableciendo nueva sesión...");
-
-      // Establecer la nueva sesión
-      const { error: sessionError } = await supabase.auth.setSession({
-        access_token: data.session.access_token,
-        refresh_token: data.session.refresh_token
-      });
-
-      if (sessionError) {
-        console.error('Error estableciendo sesión:', sessionError);
-        toast.dismiss(loadingToast);
-        toast.error(`Error al cambiar sesión: ${sessionError.message}`);
+        toast.error(data?.error || "No se pudo cambiar la sesión");
         return;
       }
 
       toast.dismiss(loadingToast);
-      toast.success(`¡Sesión cambiada exitosamente a ${user.nombre}!`);
       
-      // Redirigir al dashboard después de un breve delay
-      setTimeout(() => {
-        window.location.href = '/dashboard';
-      }, 1000);
+      // Si hay URL de redirección, usarla
+      if (data.redirectUrl) {
+        toast.success(`Redirigiendo a la sesión de ${user.nombre}...`);
+        setTimeout(() => {
+          window.location.href = data.redirectUrl;
+        }, 1000);
+      } else {
+        toast.success(`¡Sesión cambiada exitosamente a ${user.nombre}!`);
+        setTimeout(() => {
+          window.location.href = '/dashboard';
+        }, 1000);
+      }
       
     } catch (functionError: any) {
       console.error("Error en función de login:", functionError);
       toast.dismiss(loadingToast);
-      
-      const errorMessage = functionError?.message || 
-                          functionError?.details || 
-                          "Error al comunicarse con el sistema";
-      
-      toast.error(`Error: ${errorMessage}`);
+      toast.error(`Error: ${functionError.message || 'Error al comunicarse con el servidor'}`);
     }
     
   } catch (error: any) {
