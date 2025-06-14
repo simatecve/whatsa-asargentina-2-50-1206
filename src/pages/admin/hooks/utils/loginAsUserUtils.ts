@@ -18,47 +18,28 @@ export const loginAsUser = async (user: Usuario): Promise<void> => {
       return;
     }
 
-    const loadingToast = toast.loading(`Iniciando sesión como ${user.nombre}...`);
+    const loadingToast = toast.loading(`Cambiando a sesión de ${user.nombre}...`);
 
     try {
-      // Llamar a la función edge simplificada
-      const { data, error } = await supabase.functions.invoke('login-as-user', {
-        body: { 
-          userEmail: user.email
-        }
-      });
-
-      toast.dismiss(loadingToast);
-
-      if (error) {
-        console.error('Error en función edge:', error);
-        toast.error(`Error: ${error.message}`);
-        return;
-      }
-
-      if (!data?.success) {
-        toast.error(data?.error || "No se pudo cambiar la sesión");
-        return;
-      }
-
-      // Usar el enlace mágico para cambiar la sesión
-      if (data.magicLink) {
-        toast.success(`¡Redirigiendo a sesión de ${user.nombre}!`);
-        
-        // Redirigir usando el enlace mágico
-        window.location.href = data.magicLink;
-      } else {
-        toast.error("No se pudo generar el enlace de acceso");
-      }
+      // Primero cerrar la sesión actual del admin
+      await supabase.auth.signOut();
       
-    } catch (functionError: any) {
-      console.error("Error en función de login:", functionError);
+      // Mostrar mensaje y redirigir a login con email pre-llenado
       toast.dismiss(loadingToast);
-      toast.error(`Error: ${functionError.message || 'Error al comunicarse con el servidor'}`);
+      toast.success(`Sesión admin cerrada. Ahora inicia sesión como ${user.nombre}`);
+      
+      // Redirigir a login con el email del usuario
+      const loginUrl = `/login?email=${encodeURIComponent(user.email)}&returnTo=/dashboard`;
+      window.location.href = loginUrl;
+      
+    } catch (error: any) {
+      console.error("Error al cerrar sesión:", error);
+      toast.dismiss(loadingToast);
+      toast.error("Error al cambiar sesión");
     }
     
   } catch (error: any) {
-    console.error("Error general en login como usuario:", error);
-    toast.error(`Error inesperado: ${error.message || 'Error desconocido'}`);
+    console.error("Error general:", error);
+    toast.error("Error inesperado");
   }
 };

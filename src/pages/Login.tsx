@@ -1,280 +1,209 @@
 
 import { useState, useEffect } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useSearchParams } from "react-router-dom";
+import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
-import { supabase } from "@/integrations/supabase/client";
+import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { toast } from "sonner";
-import { useSistemaInfo } from "@/hooks/useSistemaInfo";
+import { Eye, EyeOff } from "lucide-react";
 
 const Login = () => {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
-  const [resetEmail, setResetEmail] = useState("");
-  const [resetLoading, setResetLoading] = useState(false);
-  const [showResetDialog, setShowResetDialog] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
+  const [isSignUp, setIsSignUp] = useState(false);
+  const [nombre, setNombre] = useState("");
   const navigate = useNavigate();
-  const { sistemaInfo, loading: loadingSistemaInfo } = useSistemaInfo();
+  const [searchParams] = useSearchParams();
 
   useEffect(() => {
+    // Verificar si hay una sesión activa
     const checkSession = async () => {
       const { data: { session } } = await supabase.auth.getSession();
       if (session) {
-        // Check if user is admin to redirect to admin panel
-        const { data } = await supabase
-          .from("usuarios")
-          .select("perfil")
-          .eq("user_id", session.user.id)
-          .single();
-        
-        if (data?.perfil === "administrador") {
-          navigate("/admin");
-        } else {
-          navigate("/dashboard");
-        }
+        const returnTo = searchParams.get('returnTo') || '/dashboard';
+        navigate(returnTo);
       }
     };
 
     checkSession();
-  }, [navigate]);
 
-  const handleLogin = async (e) => {
-    e.preventDefault();
-    if (!email || !password) {
-      toast.error("Por favor ingrese su correo electrónico y contraseña");
-      return;
+    // Pre-llenar email si viene en la URL
+    const emailParam = searchParams.get('email');
+    if (emailParam) {
+      setEmail(emailParam);
+      toast.info("Ingresa la contraseña para continuar");
     }
 
+    // Escuchar cambios de autenticación
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+      if (event === 'SIGNED_IN' && session) {
+        const returnTo = searchParams.get('returnTo') || '/dashboard';
+        navigate(returnTo);
+      }
+    });
+
+    return () => subscription.unsubscribe();
+  }, [navigate, searchParams]);
+
+  const handleLogin = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setLoading(true);
+
     try {
-      setLoading(true);
-      
-      const { data, error } = await supabase.auth.signInWithPassword({
-        email,
+      const { error } = await supabase.auth.signInWithPassword({
+        email: email.trim(),
         password,
       });
 
-      if (error) throw error;
-
-      if (data.user) {
-        // Check if user is admin to redirect to admin panel
-        const { data: userData } = await supabase
-          .from("usuarios")
-          .select("perfil")
-          .eq("user_id", data.user.id)
-          .single();
-        
-        toast.success("Inicio de sesión exitoso", {
-          description: "Bienvenido de nuevo a su panel de administración.",
-        });
-        
-        if (userData?.perfil === "administrador") {
-          navigate("/admin");
+      if (error) {
+        console.error("Error de login:", error);
+        if (error.message.includes("Invalid login credentials")) {
+          toast.error("Credenciales incorrectas");
         } else {
-          navigate("/dashboard");
+          toast.error(`Error: ${error.message}`);
         }
+        return;
       }
-    } catch (error) {
-      console.error("Error al iniciar sesión:", error.message);
-      toast.error("Error al iniciar sesión", {
-        description: error.message,
-      });
+
+      toast.success("¡Bienvenido!");
+    } catch (error: any) {
+      console.error("Error inesperado:", error);
+      toast.error("Error inesperado al iniciar sesión");
     } finally {
       setLoading(false);
     }
   };
 
-  const handlePasswordReset = async (e) => {
+  const handleSignUp = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!resetEmail) {
-      toast.error("Por favor ingrese su correo electrónico");
-      return;
-    }
+    setLoading(true);
 
     try {
-      setResetLoading(true);
-      
-      // Usar URL absoluta para la redirección
-      const redirectTo = `${window.location.origin}/reset-password`;
-      console.log("Sending password reset to:", resetEmail);
-      console.log("Redirect URL:", redirectTo);
-      
-      const { error } = await supabase.auth.resetPasswordForEmail(resetEmail, {
-        redirectTo: redirectTo,
+      const { error } = await supabase.auth.signUp({
+        email: email.trim(),
+        password,
+        options: {
+          data: {
+            nombre: nombre.trim()
+          },
+          emailRedirectTo: `${window.location.origin}/dashboard`
+        }
       });
 
       if (error) {
-        console.error("Password reset error:", error);
-        throw error;
+        console.error("Error de registro:", error);
+        if (error.message.includes("User already registered")) {
+          toast.error("Este email ya está registrado");
+        } else {
+          toast.error(`Error: ${error.message}`);
+        }
+        return;
       }
 
-      console.log("Password reset email sent successfully");
-      toast.success("Correo de recuperación enviado", {
-        description: "Revise su bandeja de entrada para restablecer su contraseña.",
-      });
-      
-      setShowResetDialog(false);
-      setResetEmail("");
-    } catch (error) {
-      console.error("Error al enviar correo de recuperación:", error.message);
-      toast.error("Error al enviar correo de recuperación", {
-        description: error.message,
-      });
+      toast.success("¡Cuenta creada! Revisa tu email para confirmar tu cuenta.");
+    } catch (error: any) {
+      console.error("Error inesperado:", error);
+      toast.error("Error inesperado al crear cuenta");
     } finally {
-      setResetLoading(false);
+      setLoading(false);
     }
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gray-50 dark:bg-gray-900 py-12 px-4 sm:px-6 lg:px-8">
-      <div className="max-w-md w-full space-y-8">
-        <div className="text-center">
-          {/* Logo del sistema */}
-          <div className="flex justify-center mb-6">
-            {loadingSistemaInfo ? (
-              <div className="h-16 w-16 bg-gray-200 animate-pulse rounded" />
-            ) : sistemaInfo?.logo_url ? (
-              <img 
-                src={sistemaInfo.logo_url} 
-                alt={sistemaInfo.nombre_sistema}
-                className="h-16 w-16 object-contain"
-              />
-            ) : (
-              <div className="h-16 w-16 bg-azul-100 text-azul-700 font-bold flex items-center justify-center rounded text-2xl">
-                {sistemaInfo?.nombre_sistema?.charAt(0) || "K"}
+    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-50 to-indigo-100 p-4">
+      <Card className="w-full max-w-md">
+        <CardHeader className="space-y-1">
+          <CardTitle className="text-2xl font-bold text-center text-azul-700">
+            {isSignUp ? "Crear Cuenta" : "Iniciar Sesión"}
+          </CardTitle>
+          <CardDescription className="text-center">
+            {isSignUp 
+              ? "Crea tu cuenta para comenzar" 
+              : "Ingresa tus credenciales para acceder"
+            }
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <form onSubmit={isSignUp ? handleSignUp : handleLogin} className="space-y-4">
+            {isSignUp && (
+              <div className="space-y-2">
+                <Label htmlFor="nombre">Nombre completo</Label>
+                <Input
+                  id="nombre"
+                  type="text"
+                  placeholder="Tu nombre completo"
+                  value={nombre}
+                  onChange={(e) => setNombre(e.target.value)}
+                  required={isSignUp}
+                />
               </div>
             )}
-          </div>
-          
-          <h2 className="mt-6 text-3xl font-extrabold text-gray-900 dark:text-white">
-            Iniciar Sesión
-          </h2>
-          <p className="mt-2 text-sm text-gray-600 dark:text-gray-400">
-            Ingrese sus credenciales para acceder al sistema
-          </p>
-        </div>
-        
-        <form className="mt-8 space-y-6" onSubmit={handleLogin}>
-          <div className="rounded-md shadow-sm -space-y-px">
-            <div className="mb-4">
-              <Label htmlFor="email-address" className="block text-sm font-medium mb-1">
-                Correo Electrónico
-              </Label>
+            
+            <div className="space-y-2">
+              <Label htmlFor="email">Correo electrónico</Label>
               <Input
-                id="email-address"
-                name="email"
+                id="email"
                 type="email"
-                autoComplete="email"
-                required
-                placeholder="Correo electrónico"
+                placeholder="tu@email.com"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
-              />
-            </div>
-            <div>
-              <Label htmlFor="password" className="block text-sm font-medium mb-1">
-                Contraseña
-              </Label>
-              <Input
-                id="password"
-                name="password"
-                type="password"
-                autoComplete="current-password"
                 required
-                placeholder="Contraseña"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
               />
             </div>
-          </div>
-
-          <div className="flex items-center justify-between">
-            <div className="text-sm">
-              <Dialog open={showResetDialog} onOpenChange={setShowResetDialog}>
-                <DialogTrigger asChild>
-                  <button 
-                    type="button"
-                    className="font-medium text-blue-600 hover:text-blue-500 cursor-pointer"
-                  >
-                    ¿Olvidó su contraseña?
-                  </button>
-                </DialogTrigger>
-                <DialogContent className="sm:max-w-md">
-                  <DialogHeader>
-                    <DialogTitle>Recuperar Contraseña</DialogTitle>
-                  </DialogHeader>
-                  <form onSubmit={handlePasswordReset} className="space-y-4">
-                    <div>
-                      <Label htmlFor="reset-email" className="block text-sm font-medium mb-1">
-                        Correo Electrónico
-                      </Label>
-                      <Input
-                        id="reset-email"
-                        type="email"
-                        placeholder="Ingrese su correo electrónico"
-                        value={resetEmail}
-                        onChange={(e) => setResetEmail(e.target.value)}
-                        required
-                      />
-                      <p className="text-sm text-gray-600 mt-2">
-                        Se enviará un enlace para restablecer su contraseña a este correo.
-                      </p>
-                    </div>
-                    <div className="flex justify-end space-x-2">
-                      <Button
-                        type="button"
-                        variant="outline"
-                        onClick={() => setShowResetDialog(false)}
-                        disabled={resetLoading}
-                      >
-                        Cancelar
-                      </Button>
-                      <Button
-                        type="submit"
-                        disabled={resetLoading}
-                      >
-                        {resetLoading ? (
-                          <div className="flex items-center">
-                            <svg className="animate-spin -ml-1 mr-3 h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                              <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                              <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                            </svg>
-                            Enviando...
-                          </div>
-                        ) : (
-                          "Enviar"
-                        )}
-                      </Button>
-                    </div>
-                  </form>
-                </DialogContent>
-              </Dialog>
+            
+            <div className="space-y-2">
+              <Label htmlFor="password">Contraseña</Label>
+              <div className="relative">
+                <Input
+                  id="password"
+                  type={showPassword ? "text" : "password"}
+                  placeholder="••••••••"
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  required
+                />
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="sm"
+                  className="absolute right-0 top-0 h-full px-3 py-2 hover:bg-transparent"
+                  onClick={() => setShowPassword(!showPassword)}
+                >
+                  {showPassword ? (
+                    <EyeOff className="h-4 w-4" />
+                  ) : (
+                    <Eye className="h-4 w-4" />
+                  )}
+                </Button>
+              </div>
             </div>
-          </div>
-
-          <div>
-            <Button
-              type="submit"
-              className="w-full"
+            
+            <Button 
+              type="submit" 
+              className="w-full bg-azul-700 hover:bg-azul-800" 
               disabled={loading}
             >
-              {loading ? (
-                <div className="flex items-center">
-                  <svg className="animate-spin -ml-1 mr-3 h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                  </svg>
-                  Iniciando sesión...
-                </div>
-              ) : (
-                "Iniciar Sesión"
-              )}
+              {loading ? "Procesando..." : (isSignUp ? "Crear Cuenta" : "Iniciar Sesión")}
             </Button>
-          </div>
-        </form>
-      </div>
+          </form>
+        </CardContent>
+        <CardFooter className="flex flex-col space-y-2">
+          <Button
+            variant="link"
+            onClick={() => setIsSignUp(!isSignUp)}
+            className="text-azul-700 hover:text-azul-800"
+          >
+            {isSignUp 
+              ? "¿Ya tienes cuenta? Inicia sesión" 
+              : "¿No tienes cuenta? Regístrate"
+            }
+          </Button>
+        </CardFooter>
+      </Card>
     </div>
   );
 };
