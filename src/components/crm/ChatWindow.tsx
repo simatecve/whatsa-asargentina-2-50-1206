@@ -95,7 +95,7 @@ export const ChatWindow = ({
       </div>
 
       {/* Messages area - this should take the remaining space */}
-      <div className="flex-1 min-h-0 pt-20 md:pt-0 overflow-hidden py-0">
+      <div className="flex-1 min-h-0 pt-20 md:pt-0 overflow-hidden py-[6px]">
         {messagesLoading ? <div className="h-full flex items-center justify-center">
             <div className="text-center">
               <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-green-600 mx-auto mb-4"></div>
