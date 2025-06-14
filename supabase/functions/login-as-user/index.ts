@@ -1,3 +1,4 @@
+
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts"
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 
@@ -7,14 +8,13 @@ const corsHeaders = {
 }
 
 serve(async (req) => {
-  console.log('Login as user request started')
-  
+  console.log(`[${new Date().toISOString()}] Login as user request received. Method: ${req.method}`)
+
   if (req.method === 'OPTIONS') {
     return new Response('ok', { headers: corsHeaders })
   }
 
   try {
-    // Crear cliente admin de Supabase
     const supabaseAdmin = createClient(
       Deno.env.get('SUPABASE_URL') ?? '',
       Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? '',
@@ -25,19 +25,23 @@ serve(async (req) => {
         }
       }
     )
+    console.log('Admin client created.')
 
-    const { userEmail, redirectTo } = await req.json()
+    const body = await req.json()
+    console.log('Request body:', JSON.stringify(body, null, 2))
+
+    const { userEmail, redirectTo } = body
 
     if (!userEmail || !redirectTo) {
+      console.log('Missing userEmail or redirectTo')
       return new Response(
         JSON.stringify({ success: false, error: 'El email de usuario y la URL de redirección son requeridos' }),
         { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       )
     }
 
-    console.log(`Generando enlace mágico para: ${userEmail} con redirección a: ${redirectTo}`)
+    console.log(`Generating magic link for: ${userEmail} with redirect to: ${redirectTo}`)
 
-    // Generar enlace mágico para el usuario con la URL de redirección proporcionada
     const { data: linkData, error: linkError } = await supabaseAdmin.auth.admin.generateLink({
       type: 'magiclink',
       email: userEmail,
@@ -46,15 +50,23 @@ serve(async (req) => {
       }
     })
 
-    if (linkError || !linkData) {
-      console.error('Error generando enlace mágico:', linkError)
+    if (linkError) {
+      console.error('Error generating magic link:', JSON.stringify(linkError, null, 2))
       return new Response(
-        JSON.stringify({ success: false, error: 'Error generando enlace de acceso' }),
+        JSON.stringify({ success: false, error: linkError.message || 'Error generando enlace de acceso' }),
         { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       )
     }
 
-    console.log('Enlace mágico generado exitosamente')
+    if (!linkData) {
+      console.error('No data returned from generateLink')
+      return new Response(
+        JSON.stringify({ success: false, error: 'No se pudo generar el enlace de acceso' }),
+        { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      )
+    }
+
+    console.log('Magic link generated successfully:', JSON.stringify(linkData, null, 2))
 
     return new Response(
       JSON.stringify({
@@ -69,7 +81,7 @@ serve(async (req) => {
     )
 
   } catch (error) {
-    console.error('Error en login-as-user:', error)
+    console.error('Error in login-as-user:', JSON.stringify(error, Object.getOwnPropertyNames(error)))
     return new Response(
       JSON.stringify({ success: false, error: 'Error interno del servidor' }),
       { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
