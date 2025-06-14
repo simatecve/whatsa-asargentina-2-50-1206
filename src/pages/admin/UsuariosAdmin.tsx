@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
@@ -6,6 +5,7 @@ import { UserPlus, RefreshCw } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { UserFormDialog } from "./components/UserFormDialog";
+import { UserInfoModal } from "./components/UserInfoModal";
 import { UsersTable } from "./components/UsersTable";
 import { useUserOperations } from "./hooks/useUserOperations";
 import { Usuario, FormData } from "./components/types";
@@ -16,6 +16,7 @@ const UsuariosAdmin = () => {
   const [search, setSearch] = useState("");
   const [open, setOpen] = useState(false);
   const [editUser, setEditUser] = useState<Usuario | null>(null);
+  const [viewUser, setViewUser] = useState<Usuario | null>(null);
   const [refreshing, setRefreshing] = useState(false);
   const [formData, setFormData] = useState<FormData>({
     nombre: "",
@@ -53,7 +54,7 @@ const UsuariosAdmin = () => {
     }
   };
 
-  const { saving, handleLoginAsUser, handleSaveUser, handleDeleteUser } = useUserOperations(fetchUsers);
+  const { saving, handleSaveUser, handleDeleteUser } = useUserOperations(fetchUsers);
 
   useEffect(() => {
     fetchUsers();
@@ -99,6 +100,10 @@ const UsuariosAdmin = () => {
 
   const onSaveUser = () => {
     handleSaveUser(formData, editUser, setOpen);
+  };
+
+  const handleViewUser = (user: Usuario) => {
+    setViewUser(user);
   };
 
   const filteredUsers = users.filter(user => 
@@ -149,7 +154,7 @@ const UsuariosAdmin = () => {
         loading={loading}
         onEdit={openEditDialog}
         onDelete={handleDeleteUser}
-        onLoginAsUser={handleLoginAsUser}
+        onViewUser={handleViewUser}
       />
 
       <UserFormDialog
@@ -161,6 +166,12 @@ const UsuariosAdmin = () => {
         onInputChange={handleInputChange}
         onSelectChange={handleSelectChange}
         onSave={onSaveUser}
+      />
+
+      <UserInfoModal
+        user={viewUser}
+        open={!!viewUser}
+        onClose={() => setViewUser(null)}
       />
     </div>
   );
