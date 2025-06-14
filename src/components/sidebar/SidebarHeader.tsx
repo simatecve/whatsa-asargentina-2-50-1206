@@ -1,57 +1,34 @@
 
-import { useSistemaInfo } from "@/hooks/useSistemaInfo";
 import { cn } from "@/lib/utils";
 
-type SidebarHeaderProps = {
+interface SidebarHeaderProps {
   isCollapsed: boolean;
-};
+}
 
 export const SidebarHeader = ({ isCollapsed }: SidebarHeaderProps) => {
-  const { sistemaInfo, loading } = useSistemaInfo();
-
-  if (loading) {
-    return (
-      <div className={cn(
-        "flex items-center justify-center px-3 py-4 border-b border-gray-200 dark:border-gray-800"
-      )}>
-        <div className={cn(
-          "bg-gray-200 animate-pulse rounded",
-          isCollapsed ? "h-10 w-10" : "h-12 w-12"
-        )} />
-      </div>
-    );
-  }
-
   return (
     <div className={cn(
-      "flex items-center justify-center px-3 py-4 border-b border-gray-200 dark:border-gray-800"
+      "p-4 border-b border-gray-200 dark:border-gray-800 shrink-0",
+      isCollapsed && "px-2"
     )}>
-      {sistemaInfo?.logo_url ? (
+      <div className={cn(
+        "flex items-center",
+        isCollapsed ? "justify-center" : "justify-start"
+      )}>
         <div className={cn(
-          "flex items-center justify-center",
-          isCollapsed ? "h-10 w-10" : "h-12 w-12"
+          "font-bold text-azul-700 dark:text-azul-300 transition-all duration-300",
+          isCollapsed ? "text-xl" : "text-2xl"
         )}>
-          <img 
-            src={sistemaInfo.logo_url} 
-            alt={sistemaInfo.nombre_sistema || "Logo"}
-            className={cn(
-              "max-w-full max-h-full object-contain",
-              isCollapsed ? "h-10 w-10" : "h-12 w-12"
-            )}
-            onError={(e) => {
-              console.error("Error loading logo:", e);
-              e.currentTarget.style.display = 'none';
-            }}
-          />
+          {isCollapsed ? (
+            <span className="block text-center leading-tight">
+              <span className="block text-lg">W</span>
+              <span className="block text-xs -mt-1">24</span>
+            </span>
+          ) : (
+            "WhatsApp24"
+          )}
         </div>
-      ) : (
-        <div className={cn(
-          "bg-azul-100 text-azul-700 font-bold flex items-center justify-center rounded",
-          isCollapsed ? "h-10 w-10 text-lg" : "h-12 w-12 text-xl"
-        )}>
-          {sistemaInfo?.nombre_sistema?.charAt(0) || "K"}
-        </div>
-      )}
+      </div>
     </div>
   );
 };
