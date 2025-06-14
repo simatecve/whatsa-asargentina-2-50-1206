@@ -1,10 +1,11 @@
+
 import { useState, useEffect } from "react";
-import { Link } from "react-router-dom";
+import { Link, useSearchParams } from "react-router-dom";
 import { UserProfile } from "@/components/UserProfile";
 import { supabase } from "@/integrations/supabase/client";
 import { Card } from "@/components/ui/card";
 import { toast } from "sonner";
-import { Send, Package, AlertTriangle } from "lucide-react";
+import { Send, Package, AlertTriangle, ArrowLeft } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { format } from "date-fns";
 import { useDashboardStats } from "@/hooks/useDashboardStats";
@@ -13,8 +14,10 @@ import { DashboardStatsGrid } from "@/components/dashboard/DashboardStatsGrid";
 import { QuickActions } from "@/components/dashboard/QuickActions";
 import { RecentActivity } from "@/components/dashboard/RecentActivity";
 import { LimitAlert } from "@/components/subscription/LimitAlert";
+import { returnToAdminPanel } from "@/pages/admin/hooks/utils/loginAsUserUtils";
 
 const Dashboard = () => {
+  const [searchParams] = useSearchParams();
   const [userData, setUserData] = useState<{
     nombre: string;
     email: string;
@@ -22,6 +25,13 @@ const Dashboard = () => {
     created_at?: string;
   } | null>(null);
   const [loading, setLoading] = useState(true);
+  const [isSimulatingUser, setIsSimulatingUser] = useState(false);
+  
+  // Verificar si estamos simulando un usuario
+  const simulateUserId = searchParams.get('simulate_user');
+  const userEmail = searchParams.get('user_email');
+  const userName = searchParams.get('user_name');
+
   const { stats, loading: statsLoading, error: statsError, refetch } = useDashboardStats();
   const { suscripcionActiva, limits, isExpired } = useSubscriptionValidation();
 
@@ -29,21 +39,49 @@ const Dashboard = () => {
     const fetchUserData = async () => {
       try {
         setLoading(true);
-        const { data: { session } } = await supabase.auth.getSession();
         
-        if (session?.user) {
-          // Fetch user data
-          const { data, error } = await supabase
+        // Si estamos simulando un usuario, usar los datos de la URL
+        if (simulateUserId && userEmail && userName) {
+          console.log("Simulando usuario:", { simulateUserId, userEmail, userName });
+          setIsSimulatingUser(true);
+          
+          // Buscar los datos completos del usuario simulado
+          const { data: simulatedUserData, error } = await supabase
             .from("usuarios")
             .select("*")
-            .eq("user_id", session.user.id)
+            .eq("user_id", simulateUserId)
             .single();
           
           if (error) {
-            console.error("Error fetching user data:", error);
-            toast.error("Error al cargar los datos del usuario");
-          } else if (data) {
-            setUserData(data);
+            console.error("Error fetching simulated user data:", error);
+            // Usar datos básicos de la URL si no se puede obtener de la BD
+            setUserData({
+              nombre: decodeURIComponent(userName),
+              email: decodeURIComponent(userEmail),
+              perfil: 'usuario'
+            });
+          } else {
+            setUserData(simulatedUserData);
+          }
+          
+          toast.success(`Viendo panel de ${decodeURIComponent(userName)}`);
+        } else {
+          // Funcionamiento normal - obtener sesión actual
+          const { data: { session } } = await supabase.auth.getSession();
+          
+          if (session?.user) {
+            const { data, error } = await supabase
+              .from("usuarios")
+              .select("*")
+              .eq("user_id", session.user.id)
+              .single();
+            
+            if (error) {
+              console.error("Error fetching user data:", error);
+              toast.error("Error al cargar los datos del usuario");
+            } else if (data) {
+              setUserData(data);
+            }
           }
         }
       } catch (err) {
@@ -55,14 +93,17 @@ const Dashboard = () => {
 
     fetchUserData();
 
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((_, session) => {
-      if (session) {
-        fetchUserData();
-      }
-    });
+    // Solo configurar listener de auth si NO estamos simulando
+    if (!simulateUserId) {
+      const { data: { subscription } } = supabase.auth.onAuthStateChange((_, session) => {
+        if (session) {
+          fetchUserData();
+        }
+      });
 
-    return () => subscription.unsubscribe();
-  }, []);
+      return () => subscription.unsubscribe();
+    }
+  }, [simulateUserId, userEmail, userName]);
 
   // Refrescar estadísticas cuando los datos del usuario cambien
   useEffect(() => {
@@ -168,13 +209,39 @@ const Dashboard = () => {
 
   return (
     <div className="space-y-6">
+      {/* Alerta de simulación */}
+      {isSimulatingUser && (
+        <div className="bg-blue-50 border border-blue-200 p-4 rounded-lg">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <AlertTriangle className="h-5 w-5 text-blue-600" />
+              <span className="text-blue-800 font-medium">
+                Simulando sesión de usuario: {userData?.nombre}
+              </span>
+            </div>
+            <Button
+              onClick={returnToAdminPanel}
+              variant="outline"
+              size="sm"
+              className="border-blue-300 text-blue-700 hover:bg-blue-100"
+            >
+              <ArrowLeft className="h-4 w-4 mr-2" />
+              Volver al Panel Admin
+            </Button>
+          </div>
+        </div>
+      )}
+
       {userData && (
         <div className="bg-gradient-to-r from-azul-100 to-azul-50 dark:from-azul-900 dark:to-gray-900 p-6 rounded-lg border border-azul-200 dark:border-azul-800 shadow-sm">
           <h1 className="text-2xl font-bold tracking-tight text-azul-700 dark:text-azul-300">
-            ¡Bienvenido de vuelta, {userData.nombre}!
+            {isSimulatingUser ? `Panel de ${userData.nombre}` : `¡Bienvenido de vuelta, ${userData.nombre}!`}
           </h1>
           <p className="text-muted-foreground mt-1">
-            Aquí tienes un resumen de tu actividad y el estado de tus instancias de WhatsApp.
+            {isSimulatingUser 
+              ? `Estás viendo el panel desde la perspectiva de ${userData.nombre}`
+              : "Aquí tienes un resumen de tu actividad y el estado de tus instancias de WhatsApp."
+            }
           </p>
         </div>
       )}
