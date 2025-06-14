@@ -27,11 +27,10 @@ export const loginAsUser = async (user: Usuario): Promise<void> => {
     const loadingToast = toast.loading(`Cambiando sesión a ${user.nombre}...`);
 
     try {
-      // Llamar a la función edge simplificada
+      // Llamar a la función edge que generará el enlace de acceso
       const { data, error } = await supabase.functions.invoke('admin-login-as-user', {
         body: { 
-          targetUserEmail: user.email,
-          targetUserId: user.user_id || user.id
+          targetUserEmail: user.email
         }
       });
 
@@ -49,19 +48,12 @@ export const loginAsUser = async (user: Usuario): Promise<void> => {
       }
 
       toast.dismiss(loadingToast);
+      toast.success(`Redirigiendo a la sesión de ${user.nombre}...`);
       
-      // Si hay URL de redirección, usarla
-      if (data.redirectUrl) {
-        toast.success(`Redirigiendo a la sesión de ${user.nombre}...`);
-        setTimeout(() => {
-          window.location.href = data.redirectUrl;
-        }, 1000);
-      } else {
-        toast.success(`¡Sesión cambiada exitosamente a ${user.nombre}!`);
-        setTimeout(() => {
-          window.location.href = '/dashboard';
-        }, 1000);
-      }
+      // Redirigir usando el enlace mágico generado
+      setTimeout(() => {
+        window.location.href = data.redirectUrl;
+      }, 1000);
       
     } catch (functionError: any) {
       console.error("Error en función de login:", functionError);

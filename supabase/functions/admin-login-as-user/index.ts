@@ -15,6 +15,7 @@ serve(async (req) => {
   }
 
   try {
+    // Crear cliente de Supabase con service role key
     const supabaseAdmin = createClient(
       Deno.env.get('SUPABASE_URL') ?? '',
       Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? '',
@@ -26,6 +27,7 @@ serve(async (req) => {
       }
     )
 
+    // Verificar autorización del admin
     const authHeader = req.headers.get('Authorization')
     if (!authHeader) {
       console.error('No authorization header')
@@ -46,8 +48,6 @@ serve(async (req) => {
         { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       )
     }
-
-    console.log('Usuario autenticado:', user.email)
 
     // Verificar permisos de admin
     const { data: adminUser, error: adminError } = await supabaseAdmin
@@ -73,46 +73,9 @@ serve(async (req) => {
       )
     }
 
-    console.log('Generando acceso para usuario:', targetUserEmail)
+    console.log('Generando enlace de acceso para:', targetUserEmail)
 
-    // Buscar el usuario objetivo en auth.users
-    const { data: targetUsers, error: listError } = await supabaseAdmin.auth.admin.listUsers()
-    
-    if (listError) {
-      console.error('Error listando usuarios:', listError)
-      return new Response(
-        JSON.stringify({ success: false, error: 'Error al buscar usuario' }),
-        { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      )
-    }
-
-    const targetUser = targetUsers.users.find(u => u.email === targetUserEmail)
-    
-    if (!targetUser) {
-      console.error('Usuario no encontrado:', targetUserEmail)
-      return new Response(
-        JSON.stringify({ success: false, error: 'Usuario no encontrado' }),
-        { status: 404, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      )
-    }
-
-    // Verificar que no es admin
-    const { data: targetUserData } = await supabaseAdmin
-      .from('usuarios')
-      .select('perfil')
-      .eq('user_id', targetUser.id)
-      .single()
-
-    if (targetUserData?.perfil === 'administrador') {
-      return new Response(
-        JSON.stringify({ success: false, error: 'No se puede hacer login como otro administrador' }),
-        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      )
-    }
-
-    console.log('Generando enlace mágico para:', targetUser.id)
-
-    // Generar enlace mágico
+    // Generar enlace mágico para el usuario objetivo
     const { data: linkData, error: linkError } = await supabaseAdmin.auth.admin.generateLink({
       type: 'magiclink',
       email: targetUserEmail,
@@ -131,7 +94,6 @@ serve(async (req) => {
 
     console.log('Enlace generado exitosamente')
 
-    // En lugar de intentar procesar tokens, simplemente redirigir al enlace mágico
     return new Response(
       JSON.stringify({
         success: true,
