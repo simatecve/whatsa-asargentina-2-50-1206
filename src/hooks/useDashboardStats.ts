@@ -1,4 +1,5 @@
-import { useState, useEffect, useCallback } from "react";
+
+import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 
@@ -31,28 +32,26 @@ export const useDashboardStats = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  const fetchStats = useCallback(async () => {
+  const fetchStats = async () => {
     try {
       console.log("Iniciando fetch de estadísticas...");
-      setLoading(true);
       setError(null);
-
-      // Obtener usuario actual de la sesión (sin simulación)
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) {
-        console.log("No hay usuario autenticado");
+      
+      const { data: { session } } = await supabase.auth.getSession();
+      
+      if (!session?.user) {
+        console.log("No hay sesión de usuario");
         setLoading(false);
         return;
       }
 
-      const currentUserId = user.id;
-      console.log("Usuario encontrado:", currentUserId);
+      console.log("Usuario encontrado:", session.user.id);
 
       // Obtener estadísticas de instancias
       const { data: instances, error: instancesError } = await supabase
         .from('instancias')
         .select('estado')
-        .eq('user_id', currentUserId);
+        .eq('user_id', session.user.id);
 
       if (instancesError) {
         console.error("Error obteniendo instancias:", instancesError);
@@ -68,7 +67,7 @@ export const useDashboardStats = () => {
       const { data: userInstances, error: userInstancesError } = await supabase
         .from('instancias')
         .select('nombre')
-        .eq('user_id', currentUserId);
+        .eq('user_id', session.user.id);
 
       if (userInstancesError) {
         console.error("Error obteniendo nombres de instancias:", userInstancesError);
@@ -120,7 +119,7 @@ export const useDashboardStats = () => {
       const { data: campaigns, error: campaignsError } = await supabase
         .from('campanas')
         .select('estado')
-        .eq('user_id', currentUserId);
+        .eq('user_id', session.user.id);
 
       if (campaignsError) {
         console.error("Error obteniendo campañas:", campaignsError);
@@ -136,7 +135,7 @@ export const useDashboardStats = () => {
       const { count: contactsCount, error: contactsError } = await supabase
         .from('contacts')
         .select('*', { count: 'exact', head: true })
-        .eq('user_id', currentUserId);
+        .eq('user_id', session.user.id);
 
       if (contactsError) {
         console.error("Error obteniendo contactos:", contactsError);
@@ -150,7 +149,7 @@ export const useDashboardStats = () => {
       const { data: agents, error: agentsError } = await supabase
         .from('agente_ia_config')
         .select('is_active')
-        .eq('user_id', currentUserId);
+        .eq('user_id', session.user.id);
 
       if (agentsError) {
         console.error("Error obteniendo agentes IA:", agentsError);
@@ -176,23 +175,18 @@ export const useDashboardStats = () => {
       console.log("Estadísticas finales:", newStats);
       setStats(newStats);
 
-    } catch (err) {
-      console.error("Error fetching dashboard stats:", err);
-      setError("Error al cargar las estadísticas");
+    } catch (error) {
+      console.error("Error fetching dashboard stats:", error);
+      setError("Error al cargar las estadísticas del dashboard");
       toast.error("Error al cargar las estadísticas del dashboard");
     } finally {
       setLoading(false);
     }
-  }, []);
+  };
 
   useEffect(() => {
     fetchStats();
-  }, [fetchStats]);
+  }, []);
 
-  return {
-    stats,
-    loading,
-    error,
-    refetch: fetchStats,
-  };
+  return { stats, loading, error, refetch: fetchStats };
 };

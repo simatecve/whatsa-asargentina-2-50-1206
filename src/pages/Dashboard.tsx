@@ -1,11 +1,10 @@
-
 import { useState, useEffect } from "react";
-import { Link, useSearchParams, useNavigate } from "react-router-dom";
+import { Link } from "react-router-dom";
 import { UserProfile } from "@/components/UserProfile";
 import { supabase } from "@/integrations/supabase/client";
 import { Card } from "@/components/ui/card";
 import { toast } from "sonner";
-import { Send, Package, AlertTriangle, ArrowLeft } from "lucide-react";
+import { Send, Package, AlertTriangle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { format } from "date-fns";
 import { useDashboardStats } from "@/hooks/useDashboardStats";
@@ -14,11 +13,8 @@ import { DashboardStatsGrid } from "@/components/dashboard/DashboardStatsGrid";
 import { QuickActions } from "@/components/dashboard/QuickActions";
 import { RecentActivity } from "@/components/dashboard/RecentActivity";
 import { LimitAlert } from "@/components/subscription/LimitAlert";
-import { returnToAdminPanel } from "@/pages/admin/hooks/utils/loginAsUserUtils";
 
 const Dashboard = () => {
-  const [searchParams] = useSearchParams();
-  const navigate = useNavigate();
   const [userData, setUserData] = useState<{
     nombre: string;
     email: string;
@@ -26,8 +22,6 @@ const Dashboard = () => {
     created_at?: string;
   } | null>(null);
   const [loading, setLoading] = useState(true);
-  const [showAdminReturn, setShowAdminReturn] = useState(false);
-  
   const { stats, loading: statsLoading, error: statsError, refetch } = useDashboardStats();
   const { suscripcionActiva, limits, isExpired } = useSubscriptionValidation();
 
@@ -35,14 +29,10 @@ const Dashboard = () => {
     const fetchUserData = async () => {
       try {
         setLoading(true);
-        
-        // Verificar si hay datos de admin guardados (indica que estamos como otro usuario)
-        const adminUserId = localStorage.getItem('admin_user_id');
-        
-        // Obtener sesión actual
         const { data: { session } } = await supabase.auth.getSession();
         
         if (session?.user) {
+          // Fetch user data
           const { data, error } = await supabase
             .from("usuarios")
             .select("*")
@@ -53,21 +43,7 @@ const Dashboard = () => {
             console.error("Error fetching user data:", error);
             toast.error("Error al cargar los datos del usuario");
           } else if (data) {
-            // Si el usuario actual es administrador, redirigir al panel admin
-            if (data.perfil === 'administrador') {
-              navigate('/admin');
-              return;
-            }
-            
             setUserData(data);
-            
-            // Mostrar botón de regreso solo si hay admin guardado Y el usuario actual NO es admin
-            setShowAdminReturn(adminUserId && data.perfil !== 'administrador');
-            
-            // Mostrar mensaje de éxito solo si venimos de admin panel
-            if (adminUserId && data.perfil !== 'administrador') {
-              toast.success(`Sesión iniciada como ${data.nombre}`);
-            }
           }
         }
       } catch (err) {
@@ -79,7 +55,6 @@ const Dashboard = () => {
 
     fetchUserData();
 
-    // Configurar listener de auth
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_, session) => {
       if (session) {
         fetchUserData();
@@ -87,7 +62,7 @@ const Dashboard = () => {
     });
 
     return () => subscription.unsubscribe();
-  }, [navigate]);
+  }, []);
 
   // Refrescar estadísticas cuando los datos del usuario cambien
   useEffect(() => {
@@ -193,29 +168,6 @@ const Dashboard = () => {
 
   return (
     <div className="space-y-6">
-      {/* Alerta de acceso desde admin panel */}
-      {showAdminReturn && (
-        <div className="bg-blue-50 border border-blue-200 p-4 rounded-lg">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-2">
-              <AlertTriangle className="h-5 w-5 text-blue-600" />
-              <span className="text-blue-800 font-medium">
-                Has accedido desde el panel de administrador
-              </span>
-            </div>
-            <Button
-              onClick={returnToAdminPanel}
-              variant="outline"
-              size="sm"
-              className="border-blue-300 text-blue-700 hover:bg-blue-100"
-            >
-              <ArrowLeft className="h-4 w-4 mr-2" />
-              Volver al Panel Admin
-            </Button>
-          </div>
-        </div>
-      )}
-
       {userData && (
         <div className="bg-gradient-to-r from-azul-100 to-azul-50 dark:from-azul-900 dark:to-gray-900 p-6 rounded-lg border border-azul-200 dark:border-azul-800 shadow-sm">
           <h1 className="text-2xl font-bold tracking-tight text-azul-700 dark:text-azul-300">
