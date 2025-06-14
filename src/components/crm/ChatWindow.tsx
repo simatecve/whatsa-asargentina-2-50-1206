@@ -75,7 +75,7 @@ export const ChatWindow = ({
 
   return (
     <div className="flex flex-col h-full overflow-hidden">
-      {/* Mobile header - only visible on mobile, now fixed with blue color */}
+      {/* Mobile header - simplified without conversation count and instance selector */}
       <div className="md:hidden fixed top-0 left-0 right-0 z-50 flex items-center justify-between p-4" style={{ backgroundColor: '#152763' }}>
         <div className="flex items-center flex-1">
           <Button
