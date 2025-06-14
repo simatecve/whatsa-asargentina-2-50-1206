@@ -1,4 +1,3 @@
-
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts"
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 
@@ -27,23 +26,23 @@ serve(async (req) => {
       }
     )
 
-    const { userEmail } = await req.json()
+    const { userEmail, redirectTo } = await req.json()
 
-    if (!userEmail) {
+    if (!userEmail || !redirectTo) {
       return new Response(
-        JSON.stringify({ success: false, error: 'Email de usuario requerido' }),
+        JSON.stringify({ success: false, error: 'El email de usuario y la URL de redirección son requeridos' }),
         { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       )
     }
 
-    console.log('Generando enlace mágico para:', userEmail)
+    console.log(`Generando enlace mágico para: ${userEmail} con redirección a: ${redirectTo}`)
 
-    // Generar enlace mágico para el usuario
+    // Generar enlace mágico para el usuario con la URL de redirección proporcionada
     const { data: linkData, error: linkError } = await supabaseAdmin.auth.admin.generateLink({
       type: 'magiclink',
       email: userEmail,
       options: {
-        redirectTo: `${new URL(req.url).origin}/dashboard`
+        redirectTo: redirectTo
       }
     })
 

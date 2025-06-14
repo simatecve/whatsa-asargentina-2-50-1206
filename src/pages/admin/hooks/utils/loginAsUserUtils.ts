@@ -21,10 +21,11 @@ export const loginAsUser = async (user: Usuario): Promise<void> => {
     const loadingToast = toast.loading(`Iniciando sesión como ${user.nombre}...`);
 
     try {
-      // Llamar a la función edge simplificada
+      // Llamar a la función edge simplificada, pasando la URL de redirección
       const { data, error } = await supabase.functions.invoke('login-as-user', {
         body: { 
-          userEmail: user.email
+          userEmail: user.email,
+          redirectTo: `${window.location.origin}/dashboard`
         }
       });
 
