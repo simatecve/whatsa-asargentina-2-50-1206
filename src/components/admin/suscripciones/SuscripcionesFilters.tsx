@@ -1,6 +1,6 @@
 
-import React from "react";
-import { Search, RefreshCw } from "lucide-react";
+import React, { useState } from "react";
+import { Search, RefreshCw, User } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -22,6 +22,14 @@ export const SuscripcionesFilters = ({
   onFilterChange,
   onRefresh
 }: SuscripcionesFiltersProps) => {
+  const [userEmail, setUserEmail] = useState("");
+
+  const handleUserEmailChange = (value: string) => {
+    setUserEmail(value);
+    // Use the existing search functionality to filter by user email
+    onSearchChange(value);
+  };
+
   return (
     <div className="flex flex-col sm:flex-row gap-4 items-start sm:items-center">
       <div className="relative flex-1 max-w-sm">
@@ -33,6 +41,17 @@ export const SuscripcionesFilters = ({
           className="pl-10"
         />
       </div>
+      
+      <div className="relative flex-1 max-w-sm">
+        <User className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground h-4 w-4" />
+        <Input
+          placeholder="Buscar usuario por email..."
+          value={userEmail}
+          onChange={(e) => handleUserEmailChange(e.target.value)}
+          className="pl-10"
+        />
+      </div>
+
       <Select value={filter} onValueChange={onFilterChange}>
         <SelectTrigger className="w-[180px]">
           <SelectValue placeholder="Filtrar por estado" />
