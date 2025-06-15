@@ -4,6 +4,8 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Label } from "@/components/ui/label";
+import { Input } from "@/components/ui/input";
+import { Search } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 
@@ -34,6 +36,8 @@ interface AsignarPlanModalProps {
 export const AsignarPlanModal = ({ open, onOpenChange, onSuccess }: AsignarPlanModalProps) => {
   const [planes, setPlanes] = useState<Plan[]>([]);
   const [usuarios, setUsuarios] = useState<Usuario[]>([]);
+  const [filteredUsuarios, setFilteredUsuarios] = useState<Usuario[]>([]);
+  const [userSearch, setUserSearch] = useState("");
   const [selectedPlanId, setSelectedPlanId] = useState("");
   const [selectedUserId, setSelectedUserId] = useState("");
   const [loading, setLoading] = useState(false);
@@ -44,6 +48,19 @@ export const AsignarPlanModal = ({ open, onOpenChange, onSuccess }: AsignarPlanM
       fetchUsuarios();
     }
   }, [open]);
+
+  useEffect(() => {
+    // Filter users based on search input
+    if (userSearch.trim() === "") {
+      setFilteredUsuarios(usuarios);
+    } else {
+      const filtered = usuarios.filter(usuario => 
+        usuario.email.toLowerCase().includes(userSearch.toLowerCase()) ||
+        usuario.nombre.toLowerCase().includes(userSearch.toLowerCase())
+      );
+      setFilteredUsuarios(filtered);
+    }
+  }, [userSearch, usuarios]);
 
   const fetchPlanes = async () => {
     try {
@@ -71,6 +88,7 @@ export const AsignarPlanModal = ({ open, onOpenChange, onSuccess }: AsignarPlanM
 
       if (error) throw error;
       setUsuarios(data || []);
+      setFilteredUsuarios(data || []);
     } catch (error) {
       console.error("Error fetching users:", error);
       toast.error("Error al cargar los usuarios");
@@ -115,6 +133,7 @@ export const AsignarPlanModal = ({ open, onOpenChange, onSuccess }: AsignarPlanM
       onOpenChange(false);
       setSelectedPlanId("");
       setSelectedUserId("");
+      setUserSearch("");
     } catch (error) {
       console.error("Error asignando plan:", error);
       toast.error("Error al asignar el plan");
@@ -136,18 +155,29 @@ export const AsignarPlanModal = ({ open, onOpenChange, onSuccess }: AsignarPlanM
         <div className="space-y-4">
           <div>
             <Label htmlFor="usuario">Seleccionar Usuario</Label>
-            <Select value={selectedUserId} onValueChange={setSelectedUserId}>
-              <SelectTrigger>
-                <SelectValue placeholder="Seleccione un usuario" />
-              </SelectTrigger>
-              <SelectContent>
-                {usuarios.map((usuario) => (
-                  <SelectItem key={usuario.user_id} value={usuario.user_id}>
-                    {usuario.nombre} - {usuario.email}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+            <div className="space-y-2">
+              <div className="relative">
+                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground h-4 w-4" />
+                <Input
+                  placeholder="Buscar por email o nombre..."
+                  value={userSearch}
+                  onChange={(e) => setUserSearch(e.target.value)}
+                  className="pl-10"
+                />
+              </div>
+              <Select value={selectedUserId} onValueChange={setSelectedUserId}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Seleccione un usuario" />
+                </SelectTrigger>
+                <SelectContent>
+                  {filteredUsuarios.map((usuario) => (
+                    <SelectItem key={usuario.user_id} value={usuario.user_id}>
+                      {usuario.nombre} - {usuario.email}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
           </div>
 
           <div>
