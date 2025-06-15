@@ -41,12 +41,19 @@ export const getContactsForCampana = async (listaId: string) => {
 export const sendToWebhook = async (webhookData: any) => {
   const webhookUrl = `https://n8n2025.nocodeveloper.com/webhook/f7ea0c8e-75fe-40e8-9b1c-20ba2054c064`;
   
+  console.log('Enviando al webhook con ID de campaña:', webhookData.campana_id);
+  
   const response = await fetch(webhookUrl, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
     },
-    body: JSON.stringify(webhookData)
+    body: JSON.stringify({
+      ...webhookData,
+      // Asegurar que el campana_id esté siempre presente
+      campana_id: webhookData.campana_id,
+      id_campana: webhookData.campana_id // Alternativa por si necesitan otro nombre
+    })
   });
   
   if (!response.ok) {

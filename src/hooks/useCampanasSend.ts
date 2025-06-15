@@ -16,6 +16,8 @@ export const useCampanasSend = () => {
     try {
       setSendingCampana(campana.id);
       
+      console.log('Iniciando envío de campaña con ID:', campana.id);
+      
       // Validar la campaña y obtener la instancia
       const instance = await validateCampanaForSending(campana);
       
@@ -24,7 +26,8 @@ export const useCampanasSend = () => {
       
       // Preparar los datos para enviar al webhook
       const webhookData = {
-        campana_id: campana.id,
+        campana_id: campana.id, // ID principal de la campaña
+        id_campana: campana.id, // ID alternativo por compatibilidad
         nombre_campana: campana.nombre,
         lista_id: campana.lista_id,
         lista_nombre: campana.lista_nombre,
@@ -42,6 +45,12 @@ export const useCampanasSend = () => {
           webhook: instance.webhook
         }
       };
+      
+      console.log('Datos del webhook preparados:', {
+        campana_id: webhookData.campana_id,
+        total_contactos: webhookData.total_contactos,
+        instance_nombre: webhookData.instance.nombre
+      });
       
       // Enviar los datos al webhook
       await sendToWebhook(webhookData);
