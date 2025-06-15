@@ -1,24 +1,30 @@
+
 import { Fragment } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { Badge } from "@/components/ui/badge";
 import { Campana } from "./types";
 import { CampanaBadge } from "./CampanaBadge";
 import { Smartphone } from "lucide-react";
+
 interface CampanaDetailsProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   campana: Campana | null;
 }
+
 export const CampanaDetails = ({
   open,
   onOpenChange,
   campana
 }: CampanaDetailsProps) => {
   if (!campana) return null;
+
   const fechaCreacion = new Date(campana.created_at).toLocaleDateString();
   const fechaInicio = campana.fecha_inicio ? new Date(campana.fecha_inicio).toLocaleDateString() : "No iniciada";
   const fechaFin = campana.fecha_fin ? new Date(campana.fecha_fin).toLocaleDateString() : "No finalizada";
-  return <Dialog open={open} onOpenChange={onOpenChange}>
+
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-md md:max-w-xl">
         <DialogHeader>
           <DialogTitle className="text-xl font-bold">
@@ -64,35 +70,32 @@ export const CampanaDetails = ({
           </div>
         </div>
         
-        <div className="grid grid-cols-3 gap-4 mt-4">
-          <div className="text-center">
-            <Badge variant="outline" className="font-normal w-full">
-              {campana.total_contactos || 0} Contactos
-            </Badge>
-          </div>
-          <div className="text-center">
-            
-          </div>
-          <div className="text-center">
-            
-          </div>
+        <div className="mt-4">
+          <Badge variant="outline" className="font-normal">
+            {campana.total_contactos || 0} Contactos
+          </Badge>
         </div>
         
-        {campana.mensaje && <Fragment>
+        {campana.mensaje && (
+          <Fragment>
             <h4 className="text-sm font-semibold mt-4">Mensaje:</h4>
             <div className="p-3 bg-gray-50 rounded border mt-1 whitespace-pre-wrap">
               {campana.mensaje}
             </div>
-          </Fragment>}
+          </Fragment>
+        )}
         
-        {campana.archivo_url && <Fragment>
+        {campana.archivo_url && (
+          <Fragment>
             <h4 className="text-sm font-semibold mt-4">Archivo adjunto:</h4>
             <div className="mt-1">
               <a href={campana.archivo_url} target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:underline break-all">
                 {campana.archivo_url}
               </a>
             </div>
-          </Fragment>}
+          </Fragment>
+        )}
       </DialogContent>
-    </Dialog>;
+    </Dialog>
+  );
 };
