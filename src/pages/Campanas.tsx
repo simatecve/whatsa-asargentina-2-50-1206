@@ -103,7 +103,7 @@ const Campanas = () => {
         </TabsContent>
 
         <TabsContent value="enviadas" className="space-y-4">
-          <CampanasList estado="completada" onCreateNew={handleCreateCampana} />
+          <CampanasList estado="enviada" onCreateNew={handleCreateCampana} />
         </TabsContent>
 
         {showForm && (

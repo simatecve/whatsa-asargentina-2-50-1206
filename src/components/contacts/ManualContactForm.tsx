@@ -18,7 +18,6 @@ import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { MessageSquare, Info } from "lucide-react";
-import { normalizePhoneNumber } from "@/utils/contactValidation";
 
 const formSchema = z.object({
   name: z.string().min(1, "El nombre es obligatorio"),
@@ -47,9 +46,6 @@ export const ManualContactForm = ({ listId, onContactAdded }: ManualContactFormP
   const onSubmit = async (values: z.infer<typeof formSchema>) => {
     setLoading(true);
     try {
-      // Normalizar el número de teléfono si no tiene código de país
-      let phoneNumber = normalizePhoneNumber(values.phone_number);
-      
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) throw new Error("Usuario no autenticado");
       
@@ -58,7 +54,7 @@ export const ManualContactForm = ({ listId, onContactAdded }: ManualContactFormP
         .insert({
           list_id: listId,
           name: values.name,
-          phone_number: phoneNumber,
+          phone_number: values.phone_number,
           user_id: user.id
         });
         

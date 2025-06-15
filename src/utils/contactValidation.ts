@@ -39,13 +39,11 @@ export const validateContact = (contact: Partial<Contact>): Contact => {
 };
 
 /**
- * Normalizes a phone number by adding the country code if missing
+ * Normalizes a phone number by ensuring it has the correct format
  * @param phone The phone number to normalize
- * @returns Normalized phone number with country code
+ * @returns Normalized phone number
  */
 export const normalizePhoneNumber = (phone: string): string => {
-  if (phone && !phone.startsWith('+')) {
-    return '+34' + phone;  // Código de país español por defecto
-  }
+  // Return the phone number as is - let the user provide the complete number
   return phone;
 };
