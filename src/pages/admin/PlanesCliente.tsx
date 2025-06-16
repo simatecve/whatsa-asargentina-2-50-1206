@@ -40,35 +40,37 @@ const PlanesCliente = () => {
       
       console.log('Verificando parámetros de URL:', { paymentStatus, collectionStatus, mpStatus });
       
-      // Parámetros de éxito de MercadoPago
+      // Clear URL parameters first
+      const hasPaymentParams = paymentStatus || collectionStatus || mpStatus;
+      if (hasPaymentParams) {
+        window.history.replaceState({}, document.title, window.location.pathname);
+      }
+      
+      // Handle payment results
       if (paymentStatus === 'success' || 
           collectionStatus === 'approved' || 
           mpStatus === 'approved') {
-        console.log('Pago completado exitosamente');
-        toast.success('¡Pago completado exitosamente! Verificando y activando plan...');
-        handlePaymentSuccess();
-        // Clear URL parameters
-        window.history.replaceState({}, document.title, window.location.pathname);
-        // Refetch data to update subscription status
+        console.log('Pago completado exitosamente detectado en URL');
+        toast.success('¡Pago completado! Verificando estado...');
+        
+        // Refetch data to check for updated subscription
         setTimeout(() => {
           refetchData();
         }, 2000);
+        
       } else if (paymentStatus === 'failure' || 
                  collectionStatus === 'failure' ||
                  mpStatus === 'rejected') {
         toast.error('El pago no pudo completarse');
-        window.history.replaceState({}, document.title, window.location.pathname);
       } else if (paymentStatus === 'cancelled' || mpStatus === 'cancelled') {
         toast.warning('Pago cancelado');
-        window.history.replaceState({}, document.title, window.location.pathname);
       } else if (mpStatus === 'pending' || collectionStatus === 'pending') {
         toast.info('El pago está siendo procesado');
-        window.history.replaceState({}, document.title, window.location.pathname);
       }
     };
 
     checkPaymentCompletion();
-  }, [refetchData, handlePaymentSuccess]);
+  }, [refetchData]);
 
   const handleSelectPlan = (plan: any) => {
     openPaymentModal(plan);
@@ -117,7 +119,6 @@ const PlanesCliente = () => {
         
         <CustomPlanSection />
 
-        {/* Payment Modal */}
         <PaymentModal
           isOpen={isModalOpen}
           onClose={closePaymentModal}

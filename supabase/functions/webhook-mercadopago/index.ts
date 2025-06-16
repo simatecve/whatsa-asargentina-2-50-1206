@@ -20,11 +20,9 @@ serve(async (req) => {
       Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? ""
     );
 
-    // Parse the webhook data
     const webhookData = await req.json();
     console.log('Webhook data received:', JSON.stringify(webhookData, null, 2));
 
-    // MercadoPago sends different types of notifications
     if (webhookData.type === 'payment') {
       const paymentId = webhookData.data?.id;
       
@@ -38,7 +36,6 @@ serve(async (req) => {
 
       console.log('Processing payment notification for ID:', paymentId);
 
-      // Get MercadoPago configuration
       const { data: mpConfig } = await supabaseClient
         .from('mercadopago_config')
         .select('access_token')
@@ -52,7 +49,6 @@ serve(async (req) => {
         });
       }
 
-      // Get payment details from MercadoPago API
       const mpResponse = await fetch(`https://api.mercadopago.com/v1/payments/${paymentId}`, {
         headers: {
           'Authorization': `Bearer ${mpConfig.access_token}`
@@ -70,7 +66,7 @@ serve(async (req) => {
       const paymentData = await mpResponse.json();
       console.log('Payment data from MercadoPago:', JSON.stringify(paymentData, null, 2));
 
-      // Find the payment in our database using preference_id
+      // Find payment by preference_id
       const { data: payments, error: paymentError } = await supabaseClient
         .from('pagos')
         .select('*')
@@ -87,21 +83,17 @@ serve(async (req) => {
       const payment = payments[0];
       console.log('Found payment in database:', payment.id);
 
-      // Map MercadoPago status to our status
+      // Map status
       let newStatus = 'pendiente';
       switch (paymentData.status) {
         case 'approved':
-          newStatus = 'aprobado';
+          newStatus = 'completado';
           break;
         case 'rejected':
           newStatus = 'rechazado';
           break;
         case 'cancelled':
           newStatus = 'cancelado';
-          break;
-        case 'in_process':
-        case 'pending':
-          newStatus = 'pendiente';
           break;
         default:
           newStatus = 'pendiente';
@@ -128,62 +120,84 @@ serve(async (req) => {
         });
       }
 
-      // If payment is approved, create or update subscription
-      if (newStatus === 'aprobado' && payment.plan_id) {
-        console.log('Payment approved, creating/updating subscription');
+      // If payment approved, create subscription
+      if (newStatus === 'completado' && payment.plan_id && !payment.suscripcion_id) {
+        console.log('Payment approved, creating subscription');
         
-        // Calculate subscription dates
-        const now = new Date();
-        const endDate = new Date(now);
-        endDate.setMonth(endDate.getMonth() + 1); // Add 1 month
-
-        // Check if user already has an active subscription
-        const { data: existingSub } = await supabaseClient
-          .from('suscripciones')
+        // Get plan details
+        const { data: plan, error: planError } = await supabaseClient
+          .from('planes')
           .select('*')
-          .eq('user_id', payment.user_id)
-          .eq('estado', 'activa')
+          .eq('id', payment.plan_id)
           .single();
 
-        if (existingSub) {
-          // Update existing subscription
-          const { error: subError } = await supabaseClient
-            .from('suscripciones')
+        if (planError || !plan) {
+          console.error('Error fetching plan:', planError);
+          return new Response(JSON.stringify({ error: 'Plan not found' }), {
+            status: 500,
+            headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+          });
+        }
+
+        // Calculate subscription dates
+        const fechaInicio = new Date();
+        const fechaFin = new Date(fechaInicio);
+        
+        if (plan.periodo === 'trial') {
+          fechaFin.setDate(fechaFin.getDate() + 3);
+        } else if (plan.periodo === 'mensual') {
+          fechaFin.setMonth(fechaFin.getMonth() + 1);
+        } else if (plan.periodo === 'trimestral') {
+          fechaFin.setMonth(fechaFin.getMonth() + 3);
+        } else if (plan.periodo === 'anual') {
+          fechaFin.setFullYear(fechaFin.getFullYear() + 1);
+        } else {
+          fechaFin.setMonth(fechaFin.getMonth() + 1);
+        }
+
+        // Deactivate existing subscriptions
+        const { error: deactivateError } = await supabaseClient
+          .from('suscripciones')
+          .update({ 
+            estado: 'inactiva',
+            updated_at: new Date().toISOString()
+          })
+          .eq('user_id', payment.user_id)
+          .eq('estado', 'activa');
+
+        if (deactivateError) {
+          console.error('Error deactivating existing subscriptions:', deactivateError);
+        }
+
+        // Create new subscription
+        const { data: subscription, error: subError } = await supabaseClient
+          .from('suscripciones')
+          .insert({
+            user_id: payment.user_id,
+            plan_id: payment.plan_id,
+            fecha_inicio: fechaInicio.toISOString(),
+            fecha_fin: fechaFin.toISOString(),
+            estado: 'activa',
+            pago_id: payment.id
+          })
+          .select()
+          .single();
+
+        if (subError) {
+          console.error('Error creating subscription:', subError);
+        } else {
+          console.log('Subscription created successfully:', subscription.id);
+          
+          // Link payment to subscription
+          await supabaseClient
+            .from('pagos')
             .update({
-              plan_id: payment.plan_id,
-              fecha_fin: endDate.toISOString(),
-              pago_id: payment.id,
+              suscripcion_id: subscription.id,
               updated_at: new Date().toISOString()
             })
-            .eq('id', existingSub.id);
-
-          if (subError) {
-            console.error('Error updating subscription:', subError);
-          } else {
-            console.log('Subscription updated successfully');
-          }
-        } else {
-          // Create new subscription
-          const { error: subError } = await supabaseClient
-            .from('suscripciones')
-            .insert({
-              user_id: payment.user_id,
-              plan_id: payment.plan_id,
-              fecha_inicio: now.toISOString(),
-              fecha_fin: endDate.toISOString(),
-              estado: 'activa',
-              pago_id: payment.id
-            });
-
-          if (subError) {
-            console.error('Error creating subscription:', subError);
-          } else {
-            console.log('Subscription created successfully');
-          }
+            .eq('id', payment.id);
         }
       }
-
-      console.log('Payment webhook processed successfully');
     }
 
     return new Response(JSON.stringify({ status: 'ok' }), {

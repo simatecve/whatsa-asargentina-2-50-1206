@@ -88,20 +88,11 @@ export const PaymentModal = ({
     try {
       setLoading(true);
       
-      // Verificar métodos habilitados desde la configuración
-      const { data: methodsConfigData } = await supabase
-        .from('api_config')
-        .select('*')
-        .eq('config_type', 'payment_methods')
-        .single();
-
-      // Verificar MercadoPago
       const { data: mpConfig } = await supabase
         .from('mercadopago_config')
         .select('*')
         .single();
 
-      // Verificar PayPal
       const { data: ppConfigData } = await supabase
         .from('api_config')
         .select('*')
@@ -113,12 +104,10 @@ export const PaymentModal = ({
         paypal: false
       };
 
-      // Verificar si MercadoPago está habilitado y configurado
       if (mpConfig && mpConfig.public_key && mpConfig.access_token) {
         methods.mercadopago = true;
       }
 
-      // Verificar si PayPal está habilitado y configurado
       if (ppConfigData && ppConfigData.config_data) {
         try {
           const ppConfig = JSON.parse(ppConfigData.config_data);
@@ -130,26 +119,8 @@ export const PaymentModal = ({
         }
       }
 
-      // Aplicar configuración de métodos habilitados si existe
-      if (methodsConfigData && methodsConfigData.config_data) {
-        try {
-          const methodsConfig = JSON.parse(methodsConfigData.config_data);
-          // Solo deshabilitar si está explícitamente deshabilitado
-          if (methodsConfig.mercadopago_enabled === false) {
-            methods.mercadopago = false;
-          }
-          if (methodsConfig.paypal_enabled === false) {
-            methods.paypal = false;
-          }
-        } catch (error) {
-          console.error('Error parsing payment methods config:', error);
-        }
-      }
-
-      console.log('Métodos de pago disponibles:', methods);
       setAvailableMethods(methods);
 
-      // Auto-seleccionar si solo hay un método disponible
       const enabledMethods = Object.entries(methods).filter(([_, enabled]) => enabled);
       if (enabledMethods.length === 1) {
         setSelectedMethod(enabledMethods[0][0] as 'mercadopago' | 'paypal');
@@ -200,17 +171,11 @@ export const PaymentModal = ({
         onPaymentSuccess();
         setTimeout(() => {
           handleClose();
-          // Reload page to reflect new subscription
           window.location.reload();
         }, 2000);
       } else {
         setVerificationStatus('failed');
-        console.log('Error en verificación:', result.error);
-        if (result.error !== 'El pago no ha sido confirmado por el proveedor') {
-          toast.error(result.error || "No se pudo verificar el pago");
-        } else {
-          toast.warning("El pago aún está siendo procesado. Inténtalo de nuevo en unos momentos.");
-        }
+        toast.error(result.error || "No se pudo verificar el pago");
       }
     } catch (error) {
       console.error('Error during payment verification:', error);
@@ -218,47 +183,6 @@ export const PaymentModal = ({
       toast.error('Error al verificar el pago');
     }
   };
-
-  // Listen for payment completion via URL changes
-  useEffect(() => {
-    if (!isOpen) return;
-
-    const handlePaymentResult = () => {
-      const urlParams = new URLSearchParams(window.location.search);
-      const paymentStatus = urlParams.get('payment');
-      const collectionStatus = urlParams.get('collection_status');
-      const mpStatus = urlParams.get('status');
-      
-      if (paymentStatus === 'success' || 
-          collectionStatus === 'approved' || 
-          mpStatus === 'approved') {
-        console.log('Pago exitoso detectado en URL, verificando automáticamente');
-        if (selectedPaymentMethod && verificationStatus === 'idle') {
-          // Esperar un poco antes de verificar para que el webhook procese
-          setTimeout(() => {
-            handleVerifyPayment();
-          }, 2000);
-        }
-      } else if (paymentStatus === 'failure' || 
-                 collectionStatus === 'failure' ||
-                 mpStatus === 'rejected') {
-        toast.error("El pago no pudo completarse");
-        onPaymentFailure();
-      }
-    };
-
-    handlePaymentResult();
-    
-    const handlePopstate = () => {
-      handlePaymentResult();
-    };
-    
-    window.addEventListener('popstate', handlePopstate);
-    
-    return () => {
-      window.removeEventListener('popstate', handlePopstate);
-    };
-  }, [isOpen, selectedPaymentMethod, verificationStatus]);
 
   if (loading) {
     return (
@@ -390,12 +314,6 @@ export const PaymentModal = ({
                 }}
                 onSubmit={async () => {
                   console.log("Payment submitted");
-                  // Start verification after payment submission
-                  setTimeout(() => {
-                    if (verificationStatus === 'idle') {
-                      handleVerifyPayment();
-                    }
-                  }, 5000);
                   return Promise.resolve();
                 }}
                 onError={(error) => {
