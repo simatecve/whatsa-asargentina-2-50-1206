@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
@@ -23,23 +24,34 @@ export const usePaymentVerification = () => {
       console.log('Verificando pago para usuario:', user.id, 'método:', paymentMethod);
 
       // Get the most recent payment for this user and method
-      const { data: pendingPayment, error: paymentError } = await supabase
+      const { data: pendingPayments, error: paymentError } = await supabase
         .from('pagos')
         .select('*')
         .eq('user_id', user.id)
         .eq('metodo_pago', paymentMethod)
         .order('created_at', { ascending: false })
-        .limit(1)
-        .maybeSingle();
+        .limit(5); // Buscar entre los últimos 5 pagos
 
       if (paymentError) {
         console.error('Error fetching payment:', paymentError);
         throw new Error('Error al verificar el pago');
       }
 
-      if (!pendingPayment) {
+      if (!pendingPayments || pendingPayments.length === 0) {
         console.log('No se encontró pago para verificar');
         return { success: false, planAssigned: false, error: 'No se encontró un pago reciente' };
+      }
+
+      // Buscar un pago que esté pendiente o que ya esté aprobado pero sin suscripción
+      const pendingPayment = pendingPayments.find(p => 
+        p.estado === 'pendiente' || 
+        p.estado === 'aprobado' || 
+        (p.estado === 'completado' && !p.suscripcion_id)
+      );
+
+      if (!pendingPayment) {
+        console.log('No se encontró pago pendiente para procesar');
+        return { success: false, planAssigned: false, error: 'No se encontró un pago pendiente' };
       }
 
       console.log('Pago encontrado:', {
@@ -66,7 +78,18 @@ export const usePaymentVerification = () => {
 
       console.log('Verificación con proveedor:', paymentVerified);
 
-      if (paymentVerified || pendingPayment.estado === 'completado') {
+      // Check if it's a trial plan (precio = 0) - auto-approve
+      const { data: plan } = await supabase
+        .from('planes')
+        .select('precio, periodo')
+        .eq('id', pendingPayment.plan_id)
+        .single();
+
+      const isTrialPlan = plan && (plan.precio === 0 || plan.periodo === 'trial');
+
+      if (paymentVerified || pendingPayment.estado === 'aprobado' || isTrialPlan) {
+        console.log('Pago verificado o es plan gratuito, procesando...');
+        
         // Update payment status to completed if not already
         if (pendingPayment.estado !== 'completado') {
           console.log('Actualizando estado del pago a completado');
@@ -93,35 +116,6 @@ export const usePaymentVerification = () => {
           return { success: true, planAssigned: true };
         }
       } else {
-        // Check if it's a trial plan (precio = 0) - auto-approve
-        const { data: plan } = await supabase
-          .from('planes')
-          .select('precio, periodo')
-          .eq('id', pendingPayment.plan_id)
-          .single();
-
-        if (plan && (plan.precio === 0 || plan.periodo === 'trial')) {
-          console.log('Plan gratuito/trial detectado, aprobando automáticamente');
-          
-          // Update payment status to completed
-          const { error: updateError } = await supabase
-            .from('pagos')
-            .update({ 
-              estado: 'completado',
-              updated_at: new Date().toISOString()
-            })
-            .eq('id', pendingPayment.id);
-
-          if (updateError) {
-            console.error('Error updating trial payment status:', updateError);
-            throw new Error('Error al procesar el plan gratuito');
-          }
-
-          // Assign plan to user
-          const planAssigned = await assignPlanToUser(user.id, pendingPayment.plan_id, pendingPayment.id);
-          return { success: true, planAssigned };
-        }
-
         return { success: false, planAssigned: false, error: 'El pago no ha sido confirmado por el proveedor' };
       }
 
@@ -138,11 +132,6 @@ export const usePaymentVerification = () => {
   };
 
   const verifyMercadoPagoPayment = async (payment: any): Promise<boolean> => {
-    if (!payment.mercadopago_preferencia_id && !payment.mercadopago_id) {
-      console.log('No hay ID de MercadoPago para verificar');
-      return false;
-    }
-
     try {
       console.log('Verificando pago de MercadoPago');
 
@@ -154,6 +143,12 @@ export const usePaymentVerification = () => {
       if (mpError || !mpConfig) {
         console.error('MercadoPago config not found');
         return false;
+      }
+
+      // Si el pago ya está marcado como aprobado en nuestra base de datos, considerarlo válido
+      if (payment.estado === 'aprobado') {
+        console.log('Pago ya marcado como aprobado en la base de datos');
+        return true;
       }
 
       // If we have a direct payment ID, check it
@@ -173,7 +168,7 @@ export const usePaymentVerification = () => {
 
       // Check for payments associated with this preference
       if (payment.mercadopago_preferencia_id) {
-        const response = await fetch(`https://api.mercadopago.com/v1/payments/search?external_reference=${payment.mercadopago_preferencia_id}`, {
+        const response = await fetch(`https://api.mercadopago.com/v1/payments/search?preference_id=${payment.mercadopago_preferencia_id}`, {
           headers: {
             'Authorization': `Bearer ${mpConfig.access_token}`,
           }

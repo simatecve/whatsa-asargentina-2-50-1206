@@ -36,23 +36,33 @@ const PlanesCliente = () => {
       const urlParams = new URLSearchParams(window.location.search);
       const paymentStatus = urlParams.get('payment');
       const collectionStatus = urlParams.get('collection_status');
+      const mpStatus = urlParams.get('status');
       
-      console.log('Verificando parámetros de URL:', { paymentStatus, collectionStatus });
+      console.log('Verificando parámetros de URL:', { paymentStatus, collectionStatus, mpStatus });
       
-      if (paymentStatus === 'success' || collectionStatus === 'approved') {
+      // Parámetros de éxito de MercadoPago
+      if (paymentStatus === 'success' || 
+          collectionStatus === 'approved' || 
+          mpStatus === 'approved') {
         console.log('Pago completado exitosamente');
+        toast.success('¡Pago completado exitosamente! Verificando y activando plan...');
         handlePaymentSuccess();
         // Clear URL parameters
         window.history.replaceState({}, document.title, window.location.pathname);
         // Refetch data to update subscription status
         setTimeout(() => {
           refetchData();
-        }, 1000);
-      } else if (paymentStatus === 'failure' || collectionStatus === 'failure') {
+        }, 2000);
+      } else if (paymentStatus === 'failure' || 
+                 collectionStatus === 'failure' ||
+                 mpStatus === 'rejected') {
         toast.error('El pago no pudo completarse');
         window.history.replaceState({}, document.title, window.location.pathname);
-      } else if (paymentStatus === 'cancelled') {
+      } else if (paymentStatus === 'cancelled' || mpStatus === 'cancelled') {
         toast.warning('Pago cancelado');
+        window.history.replaceState({}, document.title, window.location.pathname);
+      } else if (mpStatus === 'pending' || collectionStatus === 'pending') {
+        toast.info('El pago está siendo procesado');
         window.history.replaceState({}, document.title, window.location.pathname);
       }
     };
@@ -69,7 +79,7 @@ const PlanesCliente = () => {
     // Refetch data to update subscription status
     setTimeout(() => {
       refetchData();
-    }, 2000);
+    }, 3000);
   };
 
   return (

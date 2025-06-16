@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from "react";
 import { initMercadoPago, Wallet } from "@mercadopago/sdk-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
@@ -207,6 +208,8 @@ export const PaymentModal = ({
         console.log('Error en verificación:', result.error);
         if (result.error !== 'El pago no ha sido confirmado por el proveedor') {
           toast.error(result.error || "No se pudo verificar el pago");
+        } else {
+          toast.warning("El pago aún está siendo procesado. Inténtalo de nuevo en unos momentos.");
         }
       }
     } catch (error) {
@@ -224,13 +227,21 @@ export const PaymentModal = ({
       const urlParams = new URLSearchParams(window.location.search);
       const paymentStatus = urlParams.get('payment');
       const collectionStatus = urlParams.get('collection_status');
+      const mpStatus = urlParams.get('status');
       
-      if (paymentStatus === 'success' || collectionStatus === 'approved') {
+      if (paymentStatus === 'success' || 
+          collectionStatus === 'approved' || 
+          mpStatus === 'approved') {
         console.log('Pago exitoso detectado en URL, verificando automáticamente');
         if (selectedPaymentMethod && verificationStatus === 'idle') {
-          handleVerifyPayment();
+          // Esperar un poco antes de verificar para que el webhook procese
+          setTimeout(() => {
+            handleVerifyPayment();
+          }, 2000);
         }
-      } else if (paymentStatus === 'failure' || collectionStatus === 'failure') {
+      } else if (paymentStatus === 'failure' || 
+                 collectionStatus === 'failure' ||
+                 mpStatus === 'rejected') {
         toast.error("El pago no pudo completarse");
         onPaymentFailure();
       }
@@ -300,7 +311,7 @@ export const PaymentModal = ({
 
           {verificationStatus === 'failed' && (
             <div className="text-center py-4">
-              <p className="text-red-600 mb-4">No se pudo verificar el pago automáticamente</p>
+              <p className="text-orange-600 mb-4">Verificando el estado del pago...</p>
               <Button onClick={handleVerifyPayment} disabled={isVerifying}>
                 {isVerifying ? (
                   <>
@@ -308,7 +319,7 @@ export const PaymentModal = ({
                     Verificando...
                   </>
                 ) : (
-                  'Verificar Pago Manualmente'
+                  'Verificar Pago'
                 )}
               </Button>
             </div>
@@ -384,7 +395,7 @@ export const PaymentModal = ({
                     if (verificationStatus === 'idle') {
                       handleVerifyPayment();
                     }
-                  }, 3000);
+                  }, 5000);
                   return Promise.resolve();
                 }}
                 onError={(error) => {
