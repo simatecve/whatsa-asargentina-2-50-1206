@@ -1,6 +1,5 @@
 
 import { supabase } from "@/integrations/supabase/client";
-import { toast } from "sonner";
 
 export const useBotContactOperations = () => {
   // Función para desactivar el bot - INSERTAR registro
@@ -91,25 +90,14 @@ export const useBotContactOperations = () => {
       if (isCurrentlyActive) {
         // Está activo, lo desactivamos (insertamos registro)
         const success = await deactivateBotForContact(numeroContacto, instanciaNombre);
-        if (success) {
-          toast.success('Bot desactivado para este contacto');
-        } else {
-          toast.error('Error al desactivar el bot');
-        }
         return success;
       } else {
         // Está desactivado, lo activamos (eliminamos registro)
         const success = await activateBotForContact(numeroContacto, instanciaNombre);
-        if (success) {
-          toast.success('Bot activado para este contacto');
-        } else {
-          toast.error('Error al activar el bot');
-        }
         return success;
       }
     } catch (error) {
       console.error('Error toggling bot status:', error);
-      toast.error('Error al cambiar el estado del bot');
       return false;
     }
   };
