@@ -35,7 +35,11 @@ export const useBotContactStatus = () => {
 
       console.log('Bot status fetched:', status);
       
-      setContactStatuses(prev => new Map(prev.set(key, status)));
+      setContactStatuses(prev => {
+        const newMap = new Map(prev);
+        newMap.set(key, status);
+        return newMap;
+      });
       return data;
     } catch (error) {
       console.error('Error fetching contact bot status:', error);

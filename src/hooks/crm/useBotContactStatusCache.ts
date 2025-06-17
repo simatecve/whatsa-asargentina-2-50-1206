@@ -11,7 +11,11 @@ export const useBotContactStatusCache = () => {
 
   const updateStatusInCache = (numeroContacto: string, instanciaNombre: string, status: BotContactStatus) => {
     const key = getContactKey(numeroContacto, instanciaNombre);
-    setContactStatuses(prev => new Map(prev.set(key, status)));
+    setContactStatuses(prev => {
+      const newMap = new Map(prev);
+      newMap.set(key, status);
+      return newMap;
+    });
   };
 
   const getStatusFromCache = (numeroContacto: string, instanciaNombre: string) => {
