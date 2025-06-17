@@ -1,3 +1,4 @@
+
 import { MessageCircle, Users, Zap, Phone, Bot, Send, AlertCircle, TrendingUp, AlertTriangle } from "lucide-react";
 import { StatsCard } from "./StatsCard";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -19,10 +20,11 @@ interface DashboardStatsGridProps {
   };
   loading: boolean;
   error?: string | null;
-  maxCampanas?: number; // Nuevo prop para mostrar el límite del plan
+  maxCampanas?: number;
+  maxInstancias?: number; // Nuevo prop para mostrar el límite del plan
 }
 
-export const DashboardStatsGrid = ({ stats, loading, error, maxCampanas }: DashboardStatsGridProps) => {
+export const DashboardStatsGrid = ({ stats, loading, error, maxCampanas, maxInstancias }: DashboardStatsGridProps) => {
   if (error) {
     return (
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
@@ -56,8 +58,8 @@ export const DashboardStatsGrid = ({ stats, loading, error, maxCampanas }: Dashb
     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
       <StatsCard
         title="Instancias WhatsApp"
-        value={`${stats.connectedInstances}/${stats.totalInstances}`}
-        description="Instancias conectadas"
+        value={maxInstancias ? `${stats.connectedInstances}/${maxInstancias}` : stats.connectedInstances}
+        description="Conectadas del plan"
         icon={Phone}
         iconColor="text-green-500"
       />

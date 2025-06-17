@@ -190,6 +190,7 @@ const Dashboard = () => {
           loading={statsLoading} 
           error={statsError} 
           maxCampanas={suscripcionActiva?.planes?.max_campanas}
+          maxInstancias={suscripcionActiva?.planes?.max_instancias}
         />
       </div>
 
