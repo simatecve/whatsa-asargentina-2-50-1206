@@ -1,4 +1,3 @@
-
 import { MessageCircle, Users, Zap, Phone, Bot, Send, AlertCircle, TrendingUp, AlertTriangle } from "lucide-react";
 import { StatsCard } from "./StatsCard";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -20,9 +19,10 @@ interface DashboardStatsGridProps {
   };
   loading: boolean;
   error?: string | null;
+  maxCampanas?: number; // Nuevo prop para mostrar el límite del plan
 }
 
-export const DashboardStatsGrid = ({ stats, loading, error }: DashboardStatsGridProps) => {
+export const DashboardStatsGrid = ({ stats, loading, error, maxCampanas }: DashboardStatsGridProps) => {
   if (error) {
     return (
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
@@ -87,9 +87,9 @@ export const DashboardStatsGrid = ({ stats, loading, error }: DashboardStatsGrid
       />
       
       <StatsCard
-        title="Campañas"
-        value={`${stats.activeCampaigns}/${stats.totalCampaigns}`}
-        description="Campañas activas"
+        title="Campañas Enviadas"
+        value={maxCampanas ? `${stats.activeCampaigns}/${maxCampanas}` : stats.activeCampaigns}
+        description="Dentro del plan"
         icon={Send}
         iconColor="text-pink-500"
       />

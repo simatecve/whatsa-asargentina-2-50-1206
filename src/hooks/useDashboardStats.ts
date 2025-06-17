@@ -50,7 +50,7 @@ export const useDashboardStats = () => {
 
       console.log("Usuario encontrado:", session.user.id);
 
-      // Obtener suscripción activa para límites de mensajes
+      // Obtener suscripción activa para límites
       const { data: suscripcion, error: suscripcionError } = await supabase
         .from("suscripciones")
         .select(`
@@ -69,6 +69,7 @@ export const useDashboardStats = () => {
       }
 
       const maxMessages = suscripcion?.planes?.max_mensajes || 0;
+      const maxCampanas = suscripcion?.planes?.max_campanas || 0;
 
       // Obtener estadísticas de instancias
       const { data: instances, error: instancesError } = await supabase
@@ -145,11 +146,13 @@ export const useDashboardStats = () => {
         }
       }
 
-      // Obtener estadísticas de campañas - SOLO contar las enviadas
+      // Obtener estadísticas de campañas - Solo contar las enviadas dentro del límite del plan
       const { data: campaigns, error: campaignsError } = await supabase
         .from('campanas')
-        .select('estado')
-        .eq('user_id', session.user.id);
+        .select('estado, created_at')
+        .eq('user_id', session.user.id)
+        .eq('estado', 'enviada')
+        .order('created_at', { ascending: true }); // Ordenar por fecha de creación para respetar el límite
 
       if (campaignsError) {
         console.error("Error obteniendo campañas:", campaignsError);
@@ -157,10 +160,10 @@ export const useDashboardStats = () => {
       }
 
       const totalCampaigns = campaigns?.length || 0;
-      // Cambiar para contar solo las campañas con estado "enviada"
-      const activeCampaigns = campaigns?.filter(c => c.estado === 'enviada').length || 0;
+      // Mostrar solo las campañas dentro del límite del plan
+      const activeCampaigns = Math.min(totalCampaigns, maxCampanas);
 
-      console.log(`Campañas: ${activeCampaigns}/${totalCampaigns} (solo enviadas contadas)`);
+      console.log(`Campañas enviadas: ${totalCampaigns}, Permitidas por plan: ${maxCampanas}, Mostradas: ${activeCampaigns}`);
 
       // Obtener estadísticas de contactos
       const { count: contactsCount, error: contactsError } = await supabase
@@ -197,7 +200,7 @@ export const useDashboardStats = () => {
         unreadMessages,
         totalLeads,
         newLeads,
-        totalCampaigns,
+        totalCampaigns: activeCampaigns, // Mostrar solo las permitidas por el plan
         activeCampaigns,
         totalContacts,
         activeAgents,

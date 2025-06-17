@@ -185,7 +185,12 @@ const Dashboard = () => {
       {/* Estadísticas principales */}
       <div>
         <h2 className="text-lg font-semibold mb-4">Resumen General</h2>
-        <DashboardStatsGrid stats={stats} loading={statsLoading} error={statsError} />
+        <DashboardStatsGrid 
+          stats={stats} 
+          loading={statsLoading} 
+          error={statsError} 
+          maxCampanas={suscripcionActiva?.planes?.max_campanas}
+        />
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
@@ -306,15 +311,16 @@ const Dashboard = () => {
           <p className="text-gray-500 mt-1">Gestión de campañas</p>
           <div className="mt-4 text-sm space-y-2">
             <div className="flex justify-between">
-              <span>Campañas activas:</span>
-              <span className="font-medium">{stats.activeCampaigns}</span>
-            </div>
-            <div className="flex justify-between">
-              <span>Total campañas:</span>
-              <span className="font-medium">{stats.totalCampaigns}</span>
+              <span>Campañas enviadas:</span>
+              <span className="font-medium">
+                {suscripcionActiva?.planes?.max_campanas 
+                  ? `${stats.activeCampaigns}/${suscripcionActiva.planes.max_campanas}`
+                  : stats.activeCampaigns
+                }
+              </span>
             </div>
             <p className="text-xs text-gray-500 mt-2">
-              Cree y gestione campañas de envío masivo para sus listas de contactos.
+              Envíe campañas masivas dentro de su límite del plan.
             </p>
           </div>
           <div className="absolute bottom-6 right-6">
