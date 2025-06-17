@@ -31,8 +31,7 @@ const CRM = () => {
         <CRMHeader
           selectedInstanceId={selectedInstanceId}
           onInstanceChange={setSelectedInstanceId}
-          conversationsCount={conversations.length}
-          maxConversations={limits?.maxConversaciones}
+          messageUsage={messageUsage}
           isExpired={showSubscriptionAlert}
         />
       </div>

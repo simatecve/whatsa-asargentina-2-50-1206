@@ -5,16 +5,17 @@ import { InstanceSelector } from "./InstanceSelector";
 interface CRMHeaderProps {
   selectedInstanceId: string;
   onInstanceChange: (instanceId: string) => void;
-  conversationsCount: number;
-  maxConversations?: number;
+  messageUsage: {
+    current: number;
+    max: number;
+  };
   isExpired?: boolean;
 }
 
 export const CRMHeader = ({
   selectedInstanceId,
   onInstanceChange,
-  conversationsCount,
-  maxConversations,
+  messageUsage,
   isExpired
 }: CRMHeaderProps) => {
   return (
@@ -25,11 +26,9 @@ export const CRMHeader = ({
         <div>
           <p className="text-muted-foreground">
             Gestione todas sus conversaciones de WhatsApp
-            {maxConversations && (
-              <span className="ml-2 text-sm">
-                ({conversationsCount}/{maxConversations} conversaciones activas)
-              </span>
-            )}
+            <span className="ml-2 text-sm">
+              ({messageUsage.current}/{messageUsage.max} mensajes recibidos)
+            </span>
             {isExpired && (
               <span className="ml-2 text-sm text-red-600">
                 - Plan vencido, funcionalidad limitada
@@ -42,11 +41,7 @@ export const CRMHeader = ({
       {/* Mobile view */}
       <div className="md:hidden flex items-center justify-between w-full">
         <div className="text-sm text-muted-foreground">
-          {maxConversations ? (
-            <span>Activas ({conversationsCount}/{maxConversations})</span>
-          ) : (
-            <span>Activas ({conversationsCount})</span>
-          )}
+          <span>Mensajes ({messageUsage.current}/{messageUsage.max})</span>
         </div>
       </div>
 
