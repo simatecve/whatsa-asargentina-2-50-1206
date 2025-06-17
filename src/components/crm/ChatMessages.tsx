@@ -18,13 +18,13 @@ export const ChatMessages = ({
   isAtMessageLimit, 
   messageUsage 
 }: ChatMessagesProps) => {
-  // Si está en el límite de mensajes, mostrar mensaje informativo simple
+  // Si está en el límite de mensajes, mostrar mensaje informativo simple SIN alerta
   if (isAtMessageLimit && messageUsage) {
     return (
       <div className="h-full p-4 flex flex-col justify-center">
         <div className="text-center text-muted-foreground">
           <p className="text-lg font-medium mb-2">Límite de mensajes alcanzado</p>
-          <p>Los mensajes no están disponibles hasta que actualices tu plan.</p>
+          <p>No puedes enviar más mensajes hasta que actualices tu plan.</p>
           <p className="text-sm mt-2">({messageUsage.current}/{messageUsage.max} mensajes recibidos)</p>
         </div>
       </div>
