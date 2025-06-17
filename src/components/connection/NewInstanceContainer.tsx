@@ -47,7 +47,19 @@ export const NewInstanceContainer = ({
       onInstanceCreated();
     } catch (error) {
       console.error("Error creating instance:", error);
-      toast.error(error instanceof Error ? error.message : "Error al crear la instancia");
+      
+      // Verificar si el error es por límite del plan
+      if (error instanceof Error && error.message.includes('Límite de instancias excedido')) {
+        toast.error("Has alcanzado el límite de instancias de tu plan. Actualiza tu plan para crear más instancias.", {
+          duration: 5000,
+          action: {
+            label: "Ver Planes",
+            onClick: () => window.location.href = "/dashboard/planes"
+          }
+        });
+      } else {
+        toast.error(error instanceof Error ? error.message : "Error al crear la instancia");
+      }
     } finally {
       setCreating(false);
     }

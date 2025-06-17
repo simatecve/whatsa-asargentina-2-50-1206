@@ -1,5 +1,7 @@
 
 import { useConnection } from "@/contexts/ConnectionContext";
+import { usePlanLimitsValidation } from "@/hooks/usePlanLimitsValidation";
+import { LimitAlert } from "@/components/subscription/LimitAlert";
 import InstanceList from "@/components/instances/InstanceList";
 
 interface InstanceListContainerProps {
@@ -8,6 +10,7 @@ interface InstanceListContainerProps {
 
 export const InstanceListContainer = ({ onCreateNew }: InstanceListContainerProps) => {
   const context = useConnection();
+  const { limits, checkLimit } = usePlanLimitsValidation();
   
   if (!context) {
     return <div>Cargando...</div>;
@@ -33,22 +36,43 @@ export const InstanceListContainer = ({ onCreateNew }: InstanceListContainerProp
     await fetchInstances();
   };
 
+  // Verificar límites de instancias
+  const instanceLimit = limits ? checkLimit('instancias') : null;
+
   return (
-    <InstanceList
-      instances={instances}
-      loading={loading}
-      checkingStatus={checkingStatus}
-      connecting={connecting}
-      connectingToCRM={connectingToCRM}
-      onRefresh={fetchInstances}
-      onConnect={handleConnectInstance}
-      onCheckStatus={checkInstanceStatus}
-      onConnectCRM={handleConnectToCRM}
-      formatDate={formatDate}
-      getStatusColor={getStatusColor}
-      onCreateNew={onCreateNew}
-      userData={userData}
-      onColorChange={handleColorChange}
-    />
+    <div className="space-y-4">
+      {/* Mostrar alerta si está cerca o en el límite */}
+      {instanceLimit && instanceLimit.isNearLimit && (
+        <LimitAlert
+          type={instanceLimit.isAtLimit ? 'error' : 'warning'}
+          title={instanceLimit.isAtLimit ? 'Límite de Instancias Alcanzado' : 'Cerca del Límite de Instancias'}
+          description={
+            instanceLimit.isAtLimit 
+              ? `Has alcanzado el límite máximo de instancias para tu plan.`
+              : `Estás cerca del límite de instancias para tu plan.`
+          }
+          current={instanceLimit.current}
+          max={instanceLimit.max}
+          planName=""
+        />
+      )}
+
+      <InstanceList
+        instances={instances}
+        loading={loading}
+        checkingStatus={checkingStatus}
+        connecting={connecting}
+        connectingToCRM={connectingToCRM}
+        onRefresh={fetchInstances}
+        onConnect={handleConnectInstance}
+        onCheckStatus={checkInstanceStatus}
+        onConnectCRM={handleConnectToCRM}
+        formatDate={formatDate}
+        getStatusColor={getStatusColor}
+        onCreateNew={onCreateNew}
+        userData={userData}
+        onColorChange={handleColorChange}
+      />
+    </div>
   );
 };

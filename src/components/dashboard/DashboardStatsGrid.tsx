@@ -27,7 +27,7 @@ export const DashboardStatsGrid = ({ stats, loading, error }: DashboardStatsGrid
     return (
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
         <div className="col-span-full p-4 text-center text-red-600 bg-red-50 rounded-lg">
-          <AlertCircle className="w-6 h-6 mx-auto mb-2" />
+          <AlertTriangle className="w-6 h-6 mx-auto mb-2" />
           <p>Error al cargar las estadísticas</p>
           <p className="text-sm text-red-500">{error}</p>
         </div>
