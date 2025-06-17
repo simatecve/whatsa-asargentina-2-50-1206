@@ -1,5 +1,5 @@
 
-import { MessageCircle, Users, Zap, Phone, Bot, Send, AlertCircle, TrendingUp } from "lucide-react";
+import { MessageCircle, Users, Zap, Phone, Bot, Send, AlertCircle, TrendingUp, AlertTriangle } from "lucide-react";
 import { StatsCard } from "./StatsCard";
 import { Skeleton } from "@/components/ui/skeleton";
 
