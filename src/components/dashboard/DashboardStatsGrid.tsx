@@ -15,6 +15,8 @@ interface DashboardStatsGridProps {
     activeCampaigns: number;
     totalContacts: number;
     activeAgents: number;
+    consumedMessages: number;
+    maxMessages: number;
   };
   loading: boolean;
   error?: string | null;
@@ -101,11 +103,11 @@ export const DashboardStatsGrid = ({ stats, loading, error }: DashboardStatsGrid
       />
       
       <StatsCard
-        title="Mensajes sin leer"
-        value={stats.unreadMessages}
-        description="Requieren atención"
+        title="Mensajes consumidos"
+        value={`${stats.consumedMessages}/${stats.maxMessages}`}
+        description="Del plan actual"
         icon={AlertCircle}
-        iconColor={stats.unreadMessages > 0 ? "text-red-500" : "text-gray-400"}
+        iconColor={stats.consumedMessages >= stats.maxMessages ? "text-red-500" : "text-green-500"}
       />
       
       <StatsCard

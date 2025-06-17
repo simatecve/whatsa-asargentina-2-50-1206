@@ -14,6 +14,8 @@ interface DashboardStats {
   activeCampaigns: number;
   totalContacts: number;
   activeAgents: number;
+  consumedMessages: number;
+  maxMessages: number;
 }
 
 export const useDashboardStats = () => {
@@ -27,7 +29,9 @@ export const useDashboardStats = () => {
     totalCampaigns: 0,
     activeCampaigns: 0,
     totalContacts: 0,
-    activeAgents: 0
+    activeAgents: 0,
+    consumedMessages: 0,
+    maxMessages: 0
   });
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -47,10 +51,30 @@ export const useDashboardStats = () => {
 
       console.log("Usuario encontrado:", session.user.id);
 
+      // Obtener suscripción activa para límites de mensajes
+      const { data: suscripcion, error: suscripcionError } = await supabase
+        .from("suscripciones")
+        .select(`
+          *,
+          planes(*)
+        `)
+        .eq("user_id", session.user.id)
+        .eq("estado", "activa")
+        .gt("fecha_fin", new Date().toISOString())
+        .order("fecha_fin", { ascending: false })
+        .limit(1)
+        .maybeSingle();
+
+      if (suscripcionError) {
+        console.error("Error obteniendo suscripción:", suscripcionError);
+      }
+
+      const maxMessages = suscripcion?.planes?.max_mensajes || 0;
+
       // Obtener estadísticas de instancias
       const { data: instances, error: instancesError } = await supabase
         .from('instancias')
-        .select('estado')
+        .select('estado, nombre')
         .eq('user_id', session.user.id);
 
       if (instancesError) {
@@ -60,22 +84,29 @@ export const useDashboardStats = () => {
 
       const totalInstances = instances?.length || 0;
       const connectedInstances = instances?.filter(i => i.estado === 'connected').length || 0;
+      const instanceNames = instances?.map(i => i.nombre) || [];
 
       console.log(`Instancias: ${connectedInstances}/${totalInstances}`);
 
-      // Obtener nombres de instancias del usuario para filtrar datos relacionados
-      const { data: userInstances, error: userInstancesError } = await supabase
-        .from('instancias')
-        .select('nombre')
-        .eq('user_id', session.user.id);
+      // Obtener mensajes consumidos del mes actual
+      const currentDate = new Date();
+      const firstDayOfMonth = new Date(currentDate.getFullYear(), currentDate.getMonth(), 1);
+      
+      let consumedMessages = 0;
+      if (instanceNames.length > 0) {
+        const { data: messagesData, error: messagesError } = await supabase
+          .from('mensajes')
+          .select('id')
+          .in('instancia', instanceNames)
+          .eq('direccion', 'recibido')
+          .gte('created_at', firstDayOfMonth.toISOString());
 
-      if (userInstancesError) {
-        console.error("Error obteniendo nombres de instancias:", userInstancesError);
-        throw userInstancesError;
+        if (messagesError) {
+          console.error("Error obteniendo mensajes consumidos:", messagesError);
+        } else {
+          consumedMessages = messagesData?.length || 0;
+        }
       }
-
-      const instanceNames = userInstances?.map(i => i.nombre) || [];
-      console.log("Nombres de instancias:", instanceNames);
 
       // Obtener estadísticas de conversaciones
       let totalConversations = 0;
@@ -169,7 +200,9 @@ export const useDashboardStats = () => {
         totalCampaigns,
         activeCampaigns,
         totalContacts,
-        activeAgents
+        activeAgents,
+        consumedMessages,
+        maxMessages
       };
 
       console.log("Estadísticas finales:", newStats);
