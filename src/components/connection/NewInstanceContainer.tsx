@@ -2,6 +2,7 @@
 import { useState } from "react";
 import { createInstance } from "@/services/apiService";
 import { useConnection } from "@/contexts/ConnectionContext";
+import { usePlanLimitsValidation } from "@/hooks/usePlanLimitsValidation";
 import NewInstanceForm from "@/components/instances/NewInstanceForm";
 import { toast } from "sonner";
 
@@ -17,11 +18,17 @@ export const NewInstanceContainer = ({
   const [instanceName, setInstanceName] = useState("");
   const [creating, setCreating] = useState(false);
   const { fetchInstances, currentQRCode, currentInstanceName, modalOpen, setModalOpen } = useConnection();
+  const { validateAndBlock } = usePlanLimitsValidation();
 
   const handleCreateInstance = async () => {
     if (!instanceName.trim()) {
       toast.error("Por favor ingrese un nombre para la instancia");
       return;
+    }
+
+    // Validar límites del plan antes de crear
+    if (!validateAndBlock('instancias')) {
+      return; // El hook ya muestra el toast de error apropiado
     }
 
     setCreating(true);
