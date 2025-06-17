@@ -11,11 +11,10 @@ interface BotToggleButtonProps {
 }
 
 export const BotToggleButton = ({ numeroContacto, instanciaNombre }: BotToggleButtonProps) => {
-  const { fetchContactStatus, toggleBotStatus, getBotStatus, loading } = useBotContactStatus();
+  const { fetchContactStatus, toggleBotStatus, loading } = useBotContactStatus();
+  const [botActive, setBotActive] = useState<boolean>(true); // Por defecto activo
   const [isInitialized, setIsInitialized] = useState(false);
   const [localLoading, setLocalLoading] = useState(false);
-
-  const botActive = getBotStatus(numeroContacto, instanciaNombre);
 
   console.log('BotToggleButton Debug:', {
     numeroContacto,
@@ -26,21 +25,28 @@ export const BotToggleButton = ({ numeroContacto, instanciaNombre }: BotToggleBu
     isInitialized
   });
 
+  // Función para obtener el estado actual desde la BD
+  const refreshStatus = async () => {
+    try {
+      const data = await fetchContactStatus(numeroContacto, instanciaNombre);
+      // Si existe registro = bot desactivado, si no existe = bot activo
+      const isActive = !data; // true si NO existe registro, false si SÍ existe
+      setBotActive(isActive);
+      console.log('Bot status refreshed from DB:', { data, isActive });
+    } catch (error) {
+      console.error('Error refreshing bot status:', error);
+      setBotActive(true); // Por defecto activo en caso de error
+    }
+  };
+
   useEffect(() => {
     const initializeStatus = async () => {
-      try {
-        await fetchContactStatus(numeroContacto, instanciaNombre);
-        setIsInitialized(true);
-      } catch (error) {
-        console.error('Error initializing bot status:', error);
-        setIsInitialized(true); // Initialize anyway to avoid infinite loading
-      }
+      await refreshStatus();
+      setIsInitialized(true);
     };
 
-    if (!isInitialized) {
-      initializeStatus();
-    }
-  }, [numeroContacto, instanciaNombre, fetchContactStatus, isInitialized]);
+    initializeStatus();
+  }, [numeroContacto, instanciaNombre]);
 
   // Escuchar cambios de estado del bot en tiempo real
   useEffect(() => {
@@ -48,8 +54,8 @@ export const BotToggleButton = ({ numeroContacto, instanciaNombre }: BotToggleBu
       const { numero_contacto, instancia_nombre } = event.detail;
       if (numero_contacto === numeroContacto && instancia_nombre === instanciaNombre) {
         console.log('Bot status changed for current contact, refreshing...');
-        // Re-fetch status to ensure we have the latest data
-        fetchContactStatus(numeroContacto, instanciaNombre);
+        // Re-fetch status desde la BD para asegurar sincronización
+        refreshStatus();
       }
     };
 
@@ -58,7 +64,7 @@ export const BotToggleButton = ({ numeroContacto, instanciaNombre }: BotToggleBu
     return () => {
       window.removeEventListener('bot-status-changed', handleBotStatusChange as EventListener);
     };
-  }, [numeroContacto, instanciaNombre, fetchContactStatus]);
+  }, [numeroContacto, instanciaNombre]);
 
   const handleToggle = async (checked: boolean) => {
     console.log('Toggle clicked:', { checked, currentStatus: botActive });
@@ -72,6 +78,8 @@ export const BotToggleButton = ({ numeroContacto, instanciaNombre }: BotToggleBu
     try {
       await toggleBotStatus(numeroContacto, instanciaNombre);
       console.log('Toggle completed successfully');
+      // Refrescar el estado desde la BD después del toggle
+      await refreshStatus();
     } catch (error) {
       console.error('Error toggling bot status:', error);
     } finally {
