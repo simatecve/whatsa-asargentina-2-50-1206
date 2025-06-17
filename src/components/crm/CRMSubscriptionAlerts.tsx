@@ -22,7 +22,7 @@ export const CRMSubscriptionAlerts = ({
 }: CRMSubscriptionAlertsProps) => {
   return (
     <>
-      {/* Alerta de límite de mensajes */}
+      {/* Alerta de límite de mensajes - SOLO aquí, no en conversaciones individuales */}
       {isAtMessageLimit && messageUsage && (
         <div className="px-4 py-2 bg-red-50 border-b border-red-200">
           <LimitReachedAlert 
@@ -32,7 +32,8 @@ export const CRMSubscriptionAlerts = ({
             blocking={true} 
           />
           <div className="mt-2 text-sm text-red-700">
-            Has alcanzado el límite de mensajes recibidos de tu plan. No podrás recibir más mensajes hasta que actualices tu plan.
+            Has alcanzado el límite de mensajes recibidos de tu plan. 
+            No podrás recibir más mensajes y todos los bots han sido desactivados automáticamente.
           </div>
         </div>
       )}

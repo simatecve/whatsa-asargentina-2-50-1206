@@ -1,9 +1,9 @@
-
 import { useState, useEffect, useCallback } from "react";
 import { useCRMData, Conversation } from "@/hooks/useCRMData";
 import { useSubscriptionValidation } from "@/hooks/useSubscriptionValidation";
 import { useConversationLimits } from "@/hooks/useConversationLimits";
 import { useMessageLimits } from "@/hooks/useMessageLimits";
+import { useBotAutoDisable } from "@/hooks/useBotAutoDisable";
 import { useURLParams } from "@/hooks/useURLParams";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
@@ -30,6 +30,9 @@ export const useCRMState = () => {
     messageUsage,
     validateMessageReceive
   } = useMessageLimits();
+
+  // Usar el hook de auto-desactivación de bots
+  useBotAutoDisable();
   
   const { getParam } = useURLParams();
   

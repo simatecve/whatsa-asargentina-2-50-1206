@@ -2,7 +2,6 @@
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { MessageBubble } from "./MessageBubble";
 import { Message } from "@/hooks/useCRMData";
-import { LimitReachedAlert } from "@/components/subscription/LimitReachedAlert";
 
 interface ChatMessagesProps {
   messages: Message[];
@@ -19,19 +18,14 @@ export const ChatMessages = ({
   isAtMessageLimit, 
   messageUsage 
 }: ChatMessagesProps) => {
-  // Si está en el límite de mensajes, mostrar solo la alerta
+  // Si está en el límite de mensajes, mostrar mensaje informativo simple
   if (isAtMessageLimit && messageUsage) {
     return (
       <div className="h-full p-4 flex flex-col justify-center">
-        <LimitReachedAlert 
-          type="mensajes" 
-          current={messageUsage.current} 
-          max={messageUsage.max} 
-          blocking={true} 
-        />
-        <div className="mt-4 text-center text-muted-foreground">
-          <p>Has alcanzado el límite de mensajes recibidos de tu plan.</p>
+        <div className="text-center text-muted-foreground">
+          <p className="text-lg font-medium mb-2">Límite de mensajes alcanzado</p>
           <p>Los mensajes no están disponibles hasta que actualices tu plan.</p>
+          <p className="text-sm mt-2">({messageUsage.current}/{messageUsage.max} mensajes recibidos)</p>
         </div>
       </div>
     );
