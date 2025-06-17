@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
@@ -67,11 +66,11 @@ export const usePlanLimitsValidation = () => {
 
       setHasActivePlan(true);
 
-      // Obtener uso actual
+      // Obtener uso actual - Para campañas, contar solo las enviadas
       const [instancias, contactos, campanas, conversaciones] = await Promise.all([
         supabase.from("instancias").select("id", { count: 'exact' }).eq("user_id", user.id),
         supabase.from("contacts").select("id", { count: 'exact' }).eq("user_id", user.id),
-        supabase.from("campanas").select("id", { count: 'exact' }).eq("user_id", user.id),
+        supabase.from("campanas").select("id", { count: 'exact' }).eq("user_id", user.id).eq("estado", "enviada"),
         supabase.from("conversaciones")
           .select("id", { count: 'exact' })
           .in("instancia_nombre", 
@@ -153,6 +152,11 @@ export const usePlanLimitsValidation = () => {
       return false;
     }
 
+    // Para campañas, no bloquear la creación, solo mostrar advertencia si está cerca del límite de envío
+    if (type === 'campanas') {
+      return true; // Siempre permitir crear campañas
+    }
+
     const limitCheck = checkLimit(type);
 
     if (limitCheck.isAtLimit) {
@@ -199,6 +203,38 @@ export const usePlanLimitsValidation = () => {
     return true;
   };
 
+  // Nueva función para validar límites de envío de campañas
+  const validateCampanaSend = (): boolean => {
+    if (!hasActivePlan) {
+      toast.error("No tienes un plan activo. Adquiere un plan para enviar campañas.", {
+        duration: 5000,
+        action: {
+          label: "Ver Planes",
+          onClick: () => window.location.href = "/dashboard/planes"
+        }
+      });
+      return false;
+    }
+
+    const limitCheck = checkLimit('campanas');
+
+    if (limitCheck.isAtLimit) {
+      toast.error(
+        `Has alcanzado el límite de campañas enviadas (${limitCheck.current}/${limitCheck.max}). Actualiza tu plan para enviar más campañas.`,
+        {
+          duration: 5000,
+          action: {
+            label: "Ver Planes",
+            onClick: () => window.location.href = "/dashboard/planes"
+          }
+        }
+      );
+      return false;
+    }
+
+    return true;
+  };
+
   useEffect(() => {
     fetchLimits();
   }, []);
@@ -209,6 +245,7 @@ export const usePlanLimitsValidation = () => {
     hasActivePlan,
     checkLimit,
     validateAndBlock,
+    validateCampanaSend,
     refetch: fetchLimits
   };
 };

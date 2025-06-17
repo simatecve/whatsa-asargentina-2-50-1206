@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
@@ -146,7 +145,7 @@ export const useDashboardStats = () => {
         }
       }
 
-      // Obtener estadísticas de campañas
+      // Obtener estadísticas de campañas - SOLO contar las enviadas
       const { data: campaigns, error: campaignsError } = await supabase
         .from('campanas')
         .select('estado')
@@ -158,9 +157,10 @@ export const useDashboardStats = () => {
       }
 
       const totalCampaigns = campaigns?.length || 0;
-      const activeCampaigns = campaigns?.filter(c => c.estado === 'activa').length || 0;
+      // Cambiar para contar solo las campañas con estado "enviada"
+      const activeCampaigns = campaigns?.filter(c => c.estado === 'enviada').length || 0;
 
-      console.log(`Campañas: ${activeCampaigns}/${totalCampaigns}`);
+      console.log(`Campañas: ${activeCampaigns}/${totalCampaigns} (solo enviadas contadas)`);
 
       // Obtener estadísticas de contactos
       const { count: contactsCount, error: contactsError } = await supabase

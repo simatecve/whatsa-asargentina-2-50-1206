@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import { toast } from "sonner";
 import { Campana } from "@/components/campanas/types";
@@ -8,15 +7,22 @@ import {
   sendToWebhook, 
   updateCampanaStatus 
 } from "@/services/campanaSendService";
+import { usePlanLimitsValidation } from "./usePlanLimitsValidation";
 
 export const useCampanasSend = () => {
   const [sendingCampana, setSendingCampana] = useState<string | null>(null);
+  const { validateCampanaSend } = usePlanLimitsValidation();
   
   const handleSendCampana = async (campana: Campana, onSuccess?: () => void) => {
     try {
       setSendingCampana(campana.id);
       
       console.log('Iniciando envío de campaña con ID:', campana.id);
+      
+      // Validar límites del plan antes de enviar
+      if (!validateCampanaSend()) {
+        return; // El hook ya muestra el toast de error apropiado
+      }
       
       // Validar la campaña y obtener la instancia
       const instance = await validateCampanaForSending(campana);
@@ -55,8 +61,8 @@ export const useCampanasSend = () => {
       // Enviar los datos al webhook
       await sendToWebhook(webhookData);
       
-      // Actualizar el estado de la campaña
-      await updateCampanaStatus(campana.id, "en_progreso");
+      // Actualizar el estado de la campaña a "enviada" en lugar de "en_progreso"
+      await updateCampanaStatus(campana.id, "enviada");
       
       toast.success("Campaña enviada correctamente", {
         description: `Se ha iniciado el proceso de envío para ${campana.total_contactos} contactos usando la instancia ${instance.nombre}.`,
