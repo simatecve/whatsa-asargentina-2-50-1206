@@ -88,23 +88,26 @@ export const useDashboardStats = () => {
 
       console.log(`Instancias: ${connectedInstances}/${totalInstances}`);
 
-      // Obtener mensajes consumidos del mes actual
-      const currentDate = new Date();
-      const firstDayOfMonth = new Date(currentDate.getFullYear(), currentDate.getMonth(), 1);
-      
+      // Obtener mensajes recibidos desde el inicio de la suscripción
       let consumedMessages = 0;
-      if (instanceNames.length > 0) {
-        const { data: messagesData, error: messagesError } = await supabase
+      if (instanceNames.length > 0 && suscripcion) {
+        const suscripcionStart = new Date(suscripcion.fecha_inicio);
+        
+        console.log('Contando mensajes recibidos desde:', suscripcionStart.toISOString());
+        console.log('Para instancias:', instanceNames);
+        
+        const { count: messagesCount, error: messagesError } = await supabase
           .from('mensajes')
-          .select('id')
+          .select('id', { count: 'exact' })
           .in('instancia', instanceNames)
           .eq('direccion', 'recibido')
-          .gte('created_at', firstDayOfMonth.toISOString());
+          .gte('created_at', suscripcionStart.toISOString());
 
         if (messagesError) {
           console.error("Error obteniendo mensajes consumidos:", messagesError);
         } else {
-          consumedMessages = messagesData?.length || 0;
+          consumedMessages = messagesCount || 0;
+          console.log(`Mensajes recibidos contados: ${consumedMessages} de máximo ${maxMessages}`);
         }
       }
 
@@ -152,7 +155,7 @@ export const useDashboardStats = () => {
         .select('estado, created_at')
         .eq('user_id', session.user.id)
         .eq('estado', 'enviada')
-        .order('created_at', { ascending: true }); // Ordenar por fecha de creación para respetar el límite
+        .order('created_at', { ascending: true });
 
       if (campaignsError) {
         console.error("Error obteniendo campañas:", campaignsError);
@@ -160,7 +163,6 @@ export const useDashboardStats = () => {
       }
 
       const totalCampaigns = campaigns?.length || 0;
-      // Mostrar solo las campañas dentro del límite del plan
       const activeCampaigns = Math.min(totalCampaigns, maxCampanas);
 
       console.log(`Campañas enviadas: ${totalCampaigns}, Permitidas por plan: ${maxCampanas}, Mostradas: ${activeCampaigns}`);
@@ -200,7 +202,7 @@ export const useDashboardStats = () => {
         unreadMessages,
         totalLeads,
         newLeads,
-        totalCampaigns: activeCampaigns, // Mostrar solo las permitidas por el plan
+        totalCampaigns: activeCampaigns,
         activeCampaigns,
         totalContacts,
         activeAgents,

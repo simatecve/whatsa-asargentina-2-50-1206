@@ -21,7 +21,7 @@ interface DashboardStatsGridProps {
   loading: boolean;
   error?: string | null;
   maxCampanas?: number;
-  maxInstancias?: number; // Nuevo prop para mostrar el límite del plan
+  maxInstancias?: number;
 }
 
 export const DashboardStatsGrid = ({ stats, loading, error, maxCampanas, maxInstancias }: DashboardStatsGridProps) => {
@@ -53,6 +53,12 @@ export const DashboardStatsGrid = ({ stats, loading, error, maxCampanas, maxInst
       </div>
     );
   }
+
+  // Determinar el color del icono basado en el porcentaje de uso de mensajes
+  const messageUsagePercentage = stats.maxMessages > 0 ? (stats.consumedMessages / stats.maxMessages) * 100 : 0;
+  const messageIconColor = messageUsagePercentage >= 90 ? "text-red-500" : 
+                          messageUsagePercentage >= 75 ? "text-orange-500" : 
+                          "text-green-500";
 
   return (
     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
@@ -105,11 +111,11 @@ export const DashboardStatsGrid = ({ stats, loading, error, maxCampanas, maxInst
       />
       
       <StatsCard
-        title="Mensajes consumidos"
+        title="Mensajes Recibidos"
         value={`${stats.consumedMessages}/${stats.maxMessages}`}
-        description="Del plan actual"
+        description="Desde inicio de suscripción"
         icon={AlertCircle}
-        iconColor={stats.consumedMessages >= stats.maxMessages ? "text-red-500" : "text-green-500"}
+        iconColor={messageIconColor}
       />
       
       <StatsCard
