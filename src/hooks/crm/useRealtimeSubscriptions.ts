@@ -87,32 +87,50 @@ export const useRealtimeSubscriptions = ({
       .on(
         'postgres_changes',
         {
-          event: '*',
+          event: 'INSERT',
           schema: 'public',
           table: 'contactos_bots'
         },
         (payload) => {
-          console.log('Bot status change detected:', payload);
+          console.log('Bot status INSERT detected:', payload);
           
-          // Extraer datos de manera segura
           const payloadNew = payload.new as any;
-          const payloadOld = payload.old as any;
-          
-          const numeroContacto = payloadNew?.numero_contacto || payloadOld?.numero_contacto;
-          const instanciaNombre = payloadNew?.instancia_nombre || payloadOld?.instancia_nombre;
-          
-          // Nueva lógica: presencia = desactivado, ausencia = activado
-          // Si es INSERT/UPDATE = bot desactivado, si es DELETE = bot activado
-          const botActivo = payload.event === 'DELETE' ? true : false;
+          const numeroContacto = payloadNew?.numero_contacto;
+          const instanciaNombre = payloadNew?.instancia_nombre;
           
           if (numeroContacto && instanciaNombre) {
-            // Esto ayudará a que el botón del bot se actualice en tiempo real
-            // Forzar re-render del componente BotToggleButton
+            // INSERT = bot desactivado
             window.dispatchEvent(new CustomEvent('bot-status-changed', { 
               detail: { 
                 numero_contacto: numeroContacto,
                 instancia_nombre: instanciaNombre,
-                bot_activo: botActivo
+                bot_activo: false
+              } 
+            }));
+          }
+        }
+      )
+      .on(
+        'postgres_changes',
+        {
+          event: 'DELETE',
+          schema: 'public',
+          table: 'contactos_bots'
+        },
+        (payload) => {
+          console.log('Bot status DELETE detected:', payload);
+          
+          const payloadOld = payload.old as any;
+          const numeroContacto = payloadOld?.numero_contacto;
+          const instanciaNombre = payloadOld?.instancia_nombre;
+          
+          if (numeroContacto && instanciaNombre) {
+            // DELETE = bot activado
+            window.dispatchEvent(new CustomEvent('bot-status-changed', { 
+              detail: { 
+                numero_contacto: numeroContacto,
+                instancia_nombre: instanciaNombre,
+                bot_activo: true
               } 
             }));
           }
