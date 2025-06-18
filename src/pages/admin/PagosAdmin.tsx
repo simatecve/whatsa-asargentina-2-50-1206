@@ -5,6 +5,8 @@ import { PaymentStatsCards } from "@/components/admin/payments/PaymentStatsCards
 import { PaymentTransactionsTable } from "@/components/admin/payments/PaymentTransactionsTable";
 import { PaymentMethodsConfig } from "@/components/admin/PaymentMethodsConfig";
 import MercadoPagoConfig from "@/components/admin/MercadoPagoConfig";
+import { PayPalConfig } from "@/components/admin/PayPalConfig";
+import { WebhookSetupGuide } from "@/components/admin/WebhookSetupGuide";
 import { usePaymentTabs } from "@/hooks/usePaymentTabs";
 
 const PagosAdmin = () => {
@@ -22,11 +24,12 @@ const PagosAdmin = () => {
       <PaymentStatsCards />
 
       <Tabs value={activeTab} onValueChange={handleTabChange} className="w-full">
-        <TabsList className="grid w-full grid-cols-5">
+        <TabsList className="grid w-full grid-cols-6">
           <TabsTrigger value="transactions">Transacciones</TabsTrigger>
           <TabsTrigger value="methods">Métodos</TabsTrigger>
           <TabsTrigger value="mercadopago">MercadoPago</TabsTrigger>
           <TabsTrigger value="paypal">PayPal</TabsTrigger>
+          <TabsTrigger value="webhooks">Webhooks</TabsTrigger>
           <TabsTrigger value="reports">Reportes</TabsTrigger>
         </TabsList>
         
@@ -43,9 +46,11 @@ const PagosAdmin = () => {
         </TabsContent>
         
         <TabsContent value="paypal" className="space-y-6">
-          <div className="text-center text-muted-foreground py-8">
-            Configuración de PayPal disponible en la pestaña "Métodos"
-          </div>
+          <PayPalConfig />
+        </TabsContent>
+        
+        <TabsContent value="webhooks" className="space-y-6">
+          <WebhookSetupGuide />
         </TabsContent>
         
         <TabsContent value="reports" className="space-y-6">

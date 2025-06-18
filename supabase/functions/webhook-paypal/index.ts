@@ -19,13 +19,12 @@ serve(async (req) => {
   try {
     console.log('=== WEBHOOK PAYPAL START ===')
     console.log('Request method:', req.method)
-    console.log('Request headers:', Object.fromEntries(req.headers))
     
     const supabase = createClient(supabaseUrl, supabaseServiceKey)
     
     // Parse request
     const webhookData = await req.json()
-    console.log('PayPal webhook data received:', webhookData)
+    console.log('PayPal webhook data received:', JSON.stringify(webhookData, null, 2))
     
     if (webhookData.event_type && webhookData.resource) {
       const eventType = webhookData.event_type
@@ -34,9 +33,20 @@ serve(async (req) => {
       console.log('Processing PayPal event:', eventType)
       
       // Handle different PayPal webhook events
-      if (eventType === 'CHECKOUT.ORDER.APPROVED' || eventType === 'PAYMENT.CAPTURE.COMPLETED') {
+      if (eventType === 'CHECKOUT.ORDER.APPROVED' || 
+          eventType === 'PAYMENT.CAPTURE.COMPLETED' ||
+          eventType === 'CHECKOUT.ORDER.COMPLETED') {
+        
         const orderId = resource.id || resource.supplementary_data?.related_ids?.order_id
         console.log('Processing PayPal order ID:', orderId)
+        
+        if (!orderId) {
+          console.error('No order ID found in PayPal webhook')
+          return new Response(JSON.stringify({ error: 'No order ID found' }), {
+            status: 400,
+            headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+          })
+        }
         
         // Find the payment with this PayPal order ID
         const { data: payment, error: paymentError } = await supabase
@@ -46,7 +56,7 @@ serve(async (req) => {
           .single()
         
         if (paymentError || !payment) {
-          console.error('Payment not found in database for PayPal order ID:', orderId)
+          console.error('Payment not found in database for PayPal order ID:', orderId, paymentError)
           return new Response(JSON.stringify({ error: 'Payment not found' }), {
             status: 404,
             headers: { ...corsHeaders, 'Content-Type': 'application/json' },
@@ -55,8 +65,8 @@ serve(async (req) => {
         
         console.log('Payment found in database:', payment.id)
         
-        // Update payment status
-        const paymentStatus = eventType === 'PAYMENT.CAPTURE.COMPLETED' ? 'completado' : 'completado'
+        // Update payment status to completed
+        const paymentStatus = 'completado'
         
         console.log('Updating payment status to:', paymentStatus)
         
@@ -79,7 +89,7 @@ serve(async (req) => {
         
         console.log('Payment updated successfully')
         
-        // If payment is completed, create or update subscription
+        // If payment is completed, create subscription
         if (paymentStatus === 'completado' && payment.plan_id && !payment.suscripcion_id) {
           console.log('Payment completed, creating subscription...')
           
@@ -104,16 +114,21 @@ serve(async (req) => {
           const fechaInicio = new Date()
           const fechaFin = new Date(fechaInicio)
           
-          if (plan.periodo === 'trial') {
-            fechaFin.setDate(fechaFin.getDate() + 3)
-          } else if (plan.periodo === 'mensual') {
-            fechaFin.setMonth(fechaFin.getMonth() + 1)
-          } else if (plan.periodo === 'trimestral') {
-            fechaFin.setMonth(fechaFin.getMonth() + 3)
-          } else if (plan.periodo === 'anual') {
-            fechaFin.setFullYear(fechaFin.getFullYear() + 1)
-          } else {
-            fechaFin.setMonth(fechaFin.getMonth() + 1) // Default to 1 month
+          switch (plan.periodo) {
+            case 'trial':
+              fechaFin.setDate(fechaFin.getDate() + 3)
+              break
+            case 'mensual':
+              fechaFin.setMonth(fechaFin.getMonth() + 1)
+              break
+            case 'trimestral':
+              fechaFin.setMonth(fechaFin.getMonth() + 3)
+              break
+            case 'anual':
+              fechaFin.setFullYear(fechaFin.getFullYear() + 1)
+              break
+            default:
+              fechaFin.setMonth(fechaFin.getMonth() + 1) // Default to 1 month
           }
           
           console.log('Creating subscription from', fechaInicio.toISOString(), 'to', fechaFin.toISOString())
@@ -172,6 +187,7 @@ serve(async (req) => {
           }
         }
         
+        console.log('PayPal webhook processed successfully')
         return new Response(JSON.stringify({ 
           success: true, 
           payment_status: paymentStatus,

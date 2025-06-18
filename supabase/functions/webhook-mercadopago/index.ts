@@ -36,6 +36,7 @@ serve(async (req) => {
 
       console.log('Processing payment notification for ID:', paymentId);
 
+      // Get MercadoPago configuration
       const { data: mpConfig } = await supabaseClient
         .from('mercadopago_config')
         .select('access_token')
@@ -49,6 +50,7 @@ serve(async (req) => {
         });
       }
 
+      // Fetch payment details from MercadoPago
       const mpResponse = await fetch(`https://api.mercadopago.com/v1/payments/${paymentId}`, {
         headers: {
           'Authorization': `Bearer ${mpConfig.access_token}`
@@ -66,10 +68,9 @@ serve(async (req) => {
       const paymentData = await mpResponse.json();
       console.log('Payment data from MercadoPago:', JSON.stringify(paymentData, null, 2));
 
-      // Find payment by preference_id OR mercadopago_id
+      // Find payment record
       let payment = null;
-      let paymentError = null;
-
+      
       // Try to find by preference_id first
       if (paymentData.preference_id) {
         const { data: paymentsByPreference, error: prefError } = await supabaseClient
@@ -81,8 +82,6 @@ serve(async (req) => {
 
         if (!prefError && paymentsByPreference && paymentsByPreference.length > 0) {
           payment = paymentsByPreference[0];
-        } else {
-          paymentError = prefError;
         }
       }
 
@@ -97,14 +96,11 @@ serve(async (req) => {
 
         if (!idError && paymentsById && paymentsById.length > 0) {
           payment = paymentsById[0];
-        } else {
-          paymentError = idError;
         }
       }
 
       if (!payment) {
         console.error('Payment not found in database for preference_id:', paymentData.preference_id, 'or payment_id:', paymentData.id);
-        console.error('Search error:', paymentError);
         return new Response(JSON.stringify({ error: 'Payment not found' }), {
           status: 404,
           headers: { ...corsHeaders, 'Content-Type': 'application/json' }
@@ -113,7 +109,7 @@ serve(async (req) => {
 
       console.log('Found payment in database:', payment.id);
 
-      // Map status
+      // Map MercadoPago status to our status
       let newStatus = 'pendiente';
       switch (paymentData.status) {
         case 'approved':
@@ -177,17 +173,24 @@ serve(async (req) => {
         const fechaInicio = new Date();
         const fechaFin = new Date(fechaInicio);
         
-        if (plan.periodo === 'trial') {
-          fechaFin.setDate(fechaFin.getDate() + 3);
-        } else if (plan.periodo === 'mensual') {
-          fechaFin.setMonth(fechaFin.getMonth() + 1);
-        } else if (plan.periodo === 'trimestral') {
-          fechaFin.setMonth(fechaFin.getMonth() + 3);
-        } else if (plan.periodo === 'anual') {
-          fechaFin.setFullYear(fechaFin.getFullYear() + 1);
-        } else {
-          fechaFin.setMonth(fechaFin.getMonth() + 1);
+        switch (plan.periodo) {
+          case 'trial':
+            fechaFin.setDate(fechaFin.getDate() + 3);
+            break;
+          case 'mensual':
+            fechaFin.setMonth(fechaFin.getMonth() + 1);
+            break;
+          case 'trimestral':
+            fechaFin.setMonth(fechaFin.getMonth() + 3);
+            break;
+          case 'anual':
+            fechaFin.setFullYear(fechaFin.getFullYear() + 1);
+            break;
+          default:
+            fechaFin.setMonth(fechaFin.getMonth() + 1);
         }
+
+        console.log(`Creating subscription from ${fechaInicio.toISOString()} to ${fechaFin.toISOString()}`);
 
         // Deactivate existing subscriptions
         const { error: deactivateError } = await supabaseClient
@@ -219,6 +222,10 @@ serve(async (req) => {
 
         if (subError) {
           console.error('Error creating subscription:', subError);
+          return new Response(JSON.stringify({ error: 'Failed to create subscription' }), {
+            status: 500,
+            headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+          });
         } else {
           console.log('Subscription created successfully:', subscription.id);
           
@@ -230,18 +237,34 @@ serve(async (req) => {
               updated_at: new Date().toISOString()
             })
             .eq('id', payment.id);
+          
+          console.log('Payment linked to subscription successfully');
         }
       }
+
+      console.log('MercadoPago webhook processed successfully');
+      return new Response(JSON.stringify({ 
+        status: 'success',
+        message: 'Payment processed successfully',
+        payment_status: newStatus
+      }), {
+        status: 200,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+      });
     }
 
-    return new Response(JSON.stringify({ status: 'ok' }), {
+    console.log('Webhook received but not a payment notification');
+    return new Response(JSON.stringify({ status: 'ok', message: 'Not a payment webhook' }), {
       status: 200,
       headers: { ...corsHeaders, 'Content-Type': 'application/json' }
     });
 
   } catch (error) {
-    console.error('Webhook error:', error);
-    return new Response(JSON.stringify({ error: 'Internal server error' }), {
+    console.error('MercadoPago webhook error:', error);
+    return new Response(JSON.stringify({ 
+      error: 'Internal server error',
+      message: error.message 
+    }), {
       status: 500,
       headers: { ...corsHeaders, 'Content-Type': 'application/json' }
     });
