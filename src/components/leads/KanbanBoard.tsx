@@ -7,7 +7,6 @@ import { Lead } from "@/types/lead";
 import { KanbanColumn as KanbanColumnType } from "@/types/kanban";
 import { useKanbanColumns } from "@/hooks/useKanbanColumns";
 import { supabase } from "@/integrations/supabase/client";
-import { toast } from "sonner";
 
 interface KanbanBoardProps {
   leads: Lead[];
@@ -80,7 +79,7 @@ const KanbanBoard: React.FC<KanbanBoardProps> = ({ leads, onUpdateStatus, onLead
       const { data: { session } } = await supabase.auth.getSession();
       
       if (!session) {
-        toast.error("No hay sesión activa");
+        console.error("No hay sesión activa");
         return;
       }
 
@@ -92,7 +91,7 @@ const KanbanBoard: React.FC<KanbanBoardProps> = ({ leads, onUpdateStatus, onLead
       const validLeads = leads.filter(lead => lead.numero && lead.pushname);
       
       if (validLeads.length === 0) {
-        toast.error("No hay leads válidos con número de teléfono en esta columna");
+        console.error("No hay leads válidos con número de teléfono en esta columna");
         return;
       }
 
@@ -125,16 +124,10 @@ const KanbanBoard: React.FC<KanbanBoardProps> = ({ leads, onUpdateStatus, onLead
 
       if (contactsError) throw contactsError;
 
-      toast.success(
-        `Lista de contactos creada exitosamente`,
-        { 
-          description: `Se creó "${listName}" con ${validLeads.length} contactos`
-        }
-      );
+      console.log(`Lista de contactos creada: "${listName}" con ${validLeads.length} contactos`);
 
     } catch (error) {
       console.error("Error creating contact list:", error);
-      toast.error("Error al crear la lista de contactos");
     }
   };
 

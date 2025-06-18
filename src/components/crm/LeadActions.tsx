@@ -11,7 +11,6 @@ import { ChevronDown, User, Loader2 } from "lucide-react";
 import { Lead } from "@/types/lead";
 import { KanbanColumn } from "@/types/kanban";
 import { useKanbanColumns } from "@/hooks/useKanbanColumns";
-import { toast } from "sonner";
 
 interface LeadActionsProps {
   lead: Lead | null;
@@ -35,17 +34,9 @@ export const LeadActions = ({
     
     setUpdating(true);
     try {
-      const success = await onUpdateStatus(lead.id, newStatus);
-      if (success) {
-        const column = columns.find(col => col.status_key === newStatus);
-        const statusTitle = column?.title || newStatus;
-        toast.success(`Lead actualizado a ${statusTitle}`);
-      } else {
-        toast.error("Error al actualizar el lead");
-      }
+      await onUpdateStatus(lead.id, newStatus);
     } catch (error) {
       console.error('Error updating lead status:', error);
-      toast.error("Error al actualizar el lead");
     } finally {
       setUpdating(false);
     }
@@ -56,15 +47,9 @@ export const LeadActions = ({
     
     setCreating(true);
     try {
-      const newLead = await onCreateLead();
-      if (newLead) {
-        toast.success("Lead creado exitosamente");
-      } else {
-        toast.error("Error al crear el lead");
-      }
+      await onCreateLead();
     } catch (error) {
       console.error('Error creating lead:', error);
-      toast.error("Error al crear el lead");
     } finally {
       setCreating(false);
     }
