@@ -6,11 +6,17 @@ import {
   Bot,
   BarChart,
   CreditCard,
-  Settings
+  Settings,
+  Plug
 } from "lucide-react";
 
 const SidebarMobileMenu = ({ collapsed }) => {
   const mobileMenuItems = [
+    {
+      icon: <Plug className="h-5 w-5" />,
+      title: "Conexión",
+      href: "/dashboard/conexion"
+    },
     {
       icon: <MessageSquare className="h-5 w-5" />,
       title: "Mensajería",
