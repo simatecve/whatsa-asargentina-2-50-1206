@@ -65,12 +65,11 @@ export const useRealtimeSubscriptions = ({
           
           // Si estamos viendo una conversación, actualizar los mensajes inmediatamente
           if (selectedConversation) {
-            const newConversationId = payload.new && typeof payload.new === 'object' && 'conversation_id' in payload.new 
-              ? (payload.new as any).conversation_id 
-              : null;
-            const oldConversationId = payload.old && typeof payload.old === 'object' && 'conversation_id' in payload.old 
-              ? (payload.old as any).conversation_id 
-              : null;
+            const payloadNew = payload.new as any;
+            const payloadOld = payload.old as any;
+            
+            const newConversationId = payloadNew?.conversation_id;
+            const oldConversationId = payloadOld?.conversation_id;
               
             if (newConversationId === selectedConversation.id || oldConversationId === selectedConversation.id) {
               console.log('Refreshing messages for current conversation');
@@ -96,15 +95,15 @@ export const useRealtimeSubscriptions = ({
           console.log('Bot status change detected:', payload);
           
           // Extraer datos de manera segura
-          const newData = payload.new && typeof payload.new === 'object' ? payload.new as any : null;
-          const oldData = payload.old && typeof payload.old === 'object' ? payload.old as any : null;
+          const payloadNew = payload.new as any;
+          const payloadOld = payload.old as any;
           
-          const numeroContacto = newData?.numero_contacto || oldData?.numero_contacto;
-          const instanciaNombre = newData?.instancia_nombre || oldData?.instancia_nombre;
+          const numeroContacto = payloadNew?.numero_contacto || payloadOld?.numero_contacto;
+          const instanciaNombre = payloadNew?.instancia_nombre || payloadOld?.instancia_nombre;
           
           // Nueva lógica: presencia = desactivado, ausencia = activado
           // Si es INSERT/UPDATE = bot desactivado, si es DELETE = bot activado
-          const botActivo = payload.eventType === 'DELETE' ? true : false;
+          const botActivo = payload.event === 'DELETE' ? true : false;
           
           if (numeroContacto && instanciaNombre) {
             // Esto ayudará a que el botón del bot se actualice en tiempo real
