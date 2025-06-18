@@ -2,6 +2,7 @@
 import React, { useEffect } from "react";
 import { usePlanesData } from "@/hooks/usePlanesData";
 import { usePaymentModal } from "@/hooks/usePaymentModal";
+import { usePaymentSuccess } from "@/hooks/usePaymentSuccess";
 import { CurrentSubscriptionCard } from "@/components/planes/CurrentSubscriptionCard";
 import { PlanCard } from "@/components/planes/PlanCard";
 import { CustomPlanSection } from "@/components/planes/CustomPlanSection";
@@ -30,9 +31,11 @@ const PlanesCliente = () => {
     handlePaymentFailure
   } = usePaymentModal();
 
+  const { processPaymentSuccess, isProcessing: isProcessingSuccess } = usePaymentSuccess();
+
   // Check for payment completion on page load
   useEffect(() => {
-    const checkPaymentCompletion = () => {
+    const checkPaymentCompletion = async () => {
       const urlParams = new URLSearchParams(window.location.search);
       const paymentStatus = urlParams.get('payment');
       const collectionStatus = urlParams.get('collection_status');
@@ -51,12 +54,19 @@ const PlanesCliente = () => {
           collectionStatus === 'approved' || 
           mpStatus === 'approved') {
         console.log('Pago completado exitosamente detectado en URL');
-        toast.success('¡Pago completado! Verificando estado...');
+        toast.info('Verificando y procesando pago...');
         
-        // Refetch data to check for updated subscription
-        setTimeout(() => {
-          refetchData();
-        }, 2000);
+        // Procesar el pago exitoso
+        const success = await processPaymentSuccess('mercadopago');
+        
+        if (success) {
+          // Refetch data to check for updated subscription
+          setTimeout(() => {
+            refetchData();
+          }, 2000);
+        } else {
+          toast.warning('El pago fue exitoso pero hubo un problema al activar el plan. Contacta al soporte.');
+        }
         
       } else if (paymentStatus === 'failure' || 
                  collectionStatus === 'failure' ||
@@ -66,22 +76,36 @@ const PlanesCliente = () => {
         toast.warning('Pago cancelado');
       } else if (mpStatus === 'pending' || collectionStatus === 'pending') {
         toast.info('El pago está siendo procesado');
+        
+        // También intentar procesar pagos pendientes
+        setTimeout(async () => {
+          await processPaymentSuccess('mercadopago');
+          refetchData();
+        }, 3000);
       }
     };
 
     checkPaymentCompletion();
-  }, [refetchData]);
+  }, [processPaymentSuccess, refetchData]);
 
   const handleSelectPlan = (plan: any) => {
     openPaymentModal(plan);
   };
 
-  const onPaymentSuccess = () => {
+  const onPaymentSuccess = async () => {
     handlePaymentSuccess();
-    // Refetch data to update subscription status
-    setTimeout(() => {
-      refetchData();
-    }, 3000);
+    
+    // Procesar el pago según el método seleccionado
+    if (selectedPaymentMethod) {
+      const success = await processPaymentSuccess(selectedPaymentMethod);
+      
+      if (success) {
+        // Refetch data to update subscription status
+        setTimeout(() => {
+          refetchData();
+        }, 3000);
+      }
+    }
   };
 
   return (
@@ -108,7 +132,7 @@ const PlanesCliente = () => {
                   key={plan.id}
                   plan={plan}
                   suscripcionActual={suscripcionActual}
-                  isProcessing={isProcessing}
+                  isProcessing={isProcessing || isProcessingSuccess}
                   processingPlanId={selectedPlan?.id || null}
                   onSelectPlan={handleSelectPlan}
                 />
@@ -130,7 +154,7 @@ const PlanesCliente = () => {
           onProcessPayment={processPayment}
           onPaymentSuccess={onPaymentSuccess}
           onPaymentFailure={handlePaymentFailure}
-          isProcessing={isProcessing}
+          isProcessing={isProcessing || isProcessingSuccess}
         />
       </div>
     </div>

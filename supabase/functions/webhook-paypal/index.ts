@@ -56,7 +56,7 @@ serve(async (req) => {
         console.log('Payment found in database:', payment.id)
         
         // Update payment status
-        const paymentStatus = eventType === 'PAYMENT.CAPTURE.COMPLETED' ? 'completado' : 'pendiente'
+        const paymentStatus = eventType === 'PAYMENT.CAPTURE.COMPLETED' ? 'completado' : 'completado'
         
         console.log('Updating payment status to:', paymentStatus)
         
@@ -80,7 +80,7 @@ serve(async (req) => {
         console.log('Payment updated successfully')
         
         // If payment is completed, create or update subscription
-        if (paymentStatus === 'completado') {
+        if (paymentStatus === 'completado' && payment.plan_id && !payment.suscripcion_id) {
           console.log('Payment completed, creating subscription...')
           
           // Get the plan information
@@ -104,8 +104,12 @@ serve(async (req) => {
           const fechaInicio = new Date()
           const fechaFin = new Date(fechaInicio)
           
-          if (plan.periodo === 'mensual') {
+          if (plan.periodo === 'trial') {
+            fechaFin.setDate(fechaFin.getDate() + 3)
+          } else if (plan.periodo === 'mensual') {
             fechaFin.setMonth(fechaFin.getMonth() + 1)
+          } else if (plan.periodo === 'trimestral') {
+            fechaFin.setMonth(fechaFin.getMonth() + 3)
           } else if (plan.periodo === 'anual') {
             fechaFin.setFullYear(fechaFin.getFullYear() + 1)
           } else {
@@ -165,24 +169,6 @@ serve(async (req) => {
             console.error('Error linking payment to subscription:', linkError)
           } else {
             console.log('Payment linked to subscription successfully')
-          }
-          
-          // Create payment transaction record
-          const { error: transactionError } = await supabase
-            .from('payment_transactions')
-            .insert({
-              payment_id: payment.id,
-              transaction_id: orderId,
-              status: 'completed',
-              amount: payment.monto * 100, // Convert to cents
-              currency: payment.moneda || 'USD',
-              provider_response: webhookData
-            })
-          
-          if (transactionError) {
-            console.error('Error creating transaction record:', transactionError)
-          } else {
-            console.log('Transaction record created successfully')
           }
         }
         

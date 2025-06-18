@@ -66,21 +66,51 @@ serve(async (req) => {
       const paymentData = await mpResponse.json();
       console.log('Payment data from MercadoPago:', JSON.stringify(paymentData, null, 2));
 
-      // Find payment by preference_id
-      const { data: payments, error: paymentError } = await supabaseClient
-        .from('pagos')
-        .select('*')
-        .eq('mercadopago_preferencia_id', paymentData.preference_id);
+      // Find payment by preference_id OR mercadopago_id
+      let payment = null;
+      let paymentError = null;
 
-      if (paymentError || !payments || payments.length === 0) {
-        console.error('Payment not found in database:', paymentError);
+      // Try to find by preference_id first
+      if (paymentData.preference_id) {
+        const { data: paymentsByPreference, error: prefError } = await supabaseClient
+          .from('pagos')
+          .select('*')
+          .eq('mercadopago_preferencia_id', paymentData.preference_id)
+          .order('created_at', { ascending: false })
+          .limit(1);
+
+        if (!prefError && paymentsByPreference && paymentsByPreference.length > 0) {
+          payment = paymentsByPreference[0];
+        } else {
+          paymentError = prefError;
+        }
+      }
+
+      // If not found by preference_id, try by mercadopago_id
+      if (!payment && paymentData.id) {
+        const { data: paymentsById, error: idError } = await supabaseClient
+          .from('pagos')
+          .select('*')
+          .eq('mercadopago_id', paymentData.id.toString())
+          .order('created_at', { ascending: false })
+          .limit(1);
+
+        if (!idError && paymentsById && paymentsById.length > 0) {
+          payment = paymentsById[0];
+        } else {
+          paymentError = idError;
+        }
+      }
+
+      if (!payment) {
+        console.error('Payment not found in database for preference_id:', paymentData.preference_id, 'or payment_id:', paymentData.id);
+        console.error('Search error:', paymentError);
         return new Response(JSON.stringify({ error: 'Payment not found' }), {
           status: 404,
           headers: { ...corsHeaders, 'Content-Type': 'application/json' }
         });
       }
 
-      const payment = payments[0];
       console.log('Found payment in database:', payment.id);
 
       // Map status
@@ -94,6 +124,10 @@ serve(async (req) => {
           break;
         case 'cancelled':
           newStatus = 'cancelado';
+          break;
+        case 'pending':
+        case 'in_process':
+          newStatus = 'pendiente';
           break;
         default:
           newStatus = 'pendiente';
