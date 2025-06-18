@@ -54,7 +54,7 @@ export const useCRMData = (selectedInstanceId?: string) => {
       
       return () => clearTimeout(timeoutId);
     }, [refreshConversations]),
-    fetchMessages: useCallback((conversation: Conversation) => {
+    fetchMessages: useCallback(async (conversation: Conversation) => {
       if (selectedConversation?.id === conversation.id) {
         refreshMessages(conversation);
       }

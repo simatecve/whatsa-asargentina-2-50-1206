@@ -48,7 +48,6 @@ export const useOptimizedConversations = (selectedInstanceId?: string, userData?
 
       // Crear nuevo AbortController
       abortControllerRef.current = new AbortController();
-      const signal = abortControllerRef.current.signal;
 
       let query = supabase
         .from('conversaciones')
@@ -70,8 +69,7 @@ export const useOptimizedConversations = (selectedInstanceId?: string, userData?
           .select('nombre, user_id')
           .eq('id', instanceId)
           .eq('user_id', session.user.id)
-          .single()
-          .abortSignal(signal);
+          .single();
         
         if (instanceData) {
           query = query.eq('instancia_nombre', instanceData.nombre);
@@ -80,8 +78,7 @@ export const useOptimizedConversations = (selectedInstanceId?: string, userData?
         const { data: userInstances } = await supabase
           .from('instancias')
           .select('nombre')
-          .eq('user_id', session.user.id)
-          .abortSignal(signal);
+          .eq('user_id', session.user.id);
         
         if (userInstances && userInstances.length > 0) {
           const instanceNames = userInstances.map(inst => inst.nombre);
@@ -93,7 +90,7 @@ export const useOptimizedConversations = (selectedInstanceId?: string, userData?
         }
       }
 
-      const { data: conversationsData, error } = await query.abortSignal(signal);
+      const { data: conversationsData, error } = await query;
 
       if (error) {
         console.error('Error fetching conversations:', error);
@@ -117,7 +114,7 @@ export const useOptimizedConversations = (selectedInstanceId?: string, userData?
       setConversations(formattedConversations);
       lastFetchRef.current = instanceId;
       
-    } catch (error) {
+    } catch (error: any) {
       if (error.name !== 'AbortError') {
         console.error('Error fetching conversations:', error);
         setConversations([]);
