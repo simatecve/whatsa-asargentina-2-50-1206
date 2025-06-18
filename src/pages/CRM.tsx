@@ -20,8 +20,10 @@ const CRM = () => {
     hasBlockedConversations,
     isAtMessageLimit,
     messageUsage,
+    hasMoreMessages,
     handleMessageSent,
-    updateConversationAfterSend
+    updateConversationAfterSend,
+    handleLoadMoreMessages
   } = useCRMState();
 
   return (
@@ -64,6 +66,8 @@ const CRM = () => {
           updateConversationAfterSend={updateConversationAfterSend}
           isAtMessageLimit={isAtMessageLimit}
           messageUsage={messageUsage}
+          hasMoreMessages={hasMoreMessages}
+          onLoadMoreMessages={handleLoadMoreMessages}
         />
       </div>
     </div>

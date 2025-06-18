@@ -21,6 +21,8 @@ interface ChatWindowProps {
     max: number;
   };
   messagesLoading?: boolean;
+  hasMoreMessages?: boolean;
+  onLoadMoreMessages?: () => void;
 }
 
 export const ChatWindow = ({
@@ -31,7 +33,9 @@ export const ChatWindow = ({
   onBackToList,
   isAtMessageLimit,
   messageUsage,
-  messagesLoading = false
+  messagesLoading = false,
+  hasMoreMessages = false,
+  onLoadMoreMessages
 }: ChatWindowProps) => {
   const {
     conversationLead,
@@ -132,6 +136,9 @@ export const ChatWindow = ({
             scrollAreaRef={scrollAreaRef} 
             isAtMessageLimit={isAtMessageLimit}
             messageUsage={messageUsage}
+            hasMoreMessages={hasMoreMessages}
+            onLoadMore={onLoadMoreMessages}
+            loadingMore={messagesLoading}
           />
         )}
       </div>

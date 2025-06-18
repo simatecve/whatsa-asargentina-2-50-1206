@@ -1,3 +1,4 @@
+
 import { useState, useEffect, useCallback } from "react";
 import { useCRMData, Conversation } from "@/hooks/useCRMData";
 import { useSubscriptionValidation } from "@/hooks/useSubscriptionValidation";
@@ -43,8 +44,10 @@ export const useCRMState = () => {
     setSelectedConversation,
     loading,
     messagesLoading,
+    hasMoreMessages,
     updateConversationAfterSend,
-    handleMessageSent: crmHandleMessageSent
+    handleMessageSent: crmHandleMessageSent,
+    loadMoreMessages
   } = useCRMData(selectedInstanceId);
 
   // Procesar conversaciones para determinar cuáles están bloqueadas
@@ -120,6 +123,12 @@ export const useCRMState = () => {
     }
   }, [selectedConversation, crmHandleMessageSent, updateConversationAfterSend]);
 
+  const handleLoadMoreMessages = useCallback(() => {
+    if (selectedConversation && loadMoreMessages) {
+      loadMoreMessages(selectedConversation);
+    }
+  }, [selectedConversation, loadMoreMessages]);
+
   // Computed values
   const showSubscriptionAlert = !subscriptionLoading && isExpired;
   const isAtConversationLimit = limits ? checkLimit('conversaciones') : false;
@@ -138,7 +147,8 @@ export const useCRMState = () => {
     limits,
     suscripcionActiva: !!suscripcionActiva,
     isAtMessageLimit,
-    messageUsage
+    messageUsage,
+    hasMoreMessages
   });
 
   return {
@@ -153,6 +163,7 @@ export const useCRMState = () => {
     loading,
     messagesLoading,
     subscriptionLoading,
+    hasMoreMessages,
     
     // Subscription data
     limits,
@@ -172,6 +183,7 @@ export const useCRMState = () => {
     
     // Handlers
     handleMessageSent,
-    updateConversationAfterSend
+    updateConversationAfterSend,
+    handleLoadMoreMessages
   };
 };

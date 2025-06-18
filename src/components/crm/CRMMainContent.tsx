@@ -18,6 +18,8 @@ interface CRMMainContentProps {
   updateConversationAfterSend?: (conversation: Conversation, message: string) => Promise<void>;
   isAtMessageLimit?: boolean;
   messageUsage?: { current: number; max: number };
+  hasMoreMessages?: boolean;
+  onLoadMoreMessages?: () => void;
 }
 
 export const CRMMainContent = ({
@@ -32,7 +34,9 @@ export const CRMMainContent = ({
   onMessageSent,
   updateConversationAfterSend,
   isAtMessageLimit,
-  messageUsage
+  messageUsage,
+  hasMoreMessages,
+  onLoadMoreMessages
 }: CRMMainContentProps) => {
   const [showMobileChat, setShowMobileChat] = useState(false);
 
@@ -67,6 +71,8 @@ export const CRMMainContent = ({
             isAtMessageLimit={isAtMessageLimit}
             messageUsage={messageUsage}
             messagesLoading={messagesLoading}
+            hasMoreMessages={hasMoreMessages}
+            onLoadMoreMessages={onLoadMoreMessages}
           />
         ) : null}
       </div>
@@ -95,6 +101,8 @@ export const CRMMainContent = ({
               isAtMessageLimit={isAtMessageLimit}
               messageUsage={messageUsage}
               messagesLoading={messagesLoading}
+              hasMoreMessages={hasMoreMessages}
+              onLoadMoreMessages={onLoadMoreMessages}
             />
           ) : (
             <div className="flex-1 flex items-center justify-center text-muted-foreground">
