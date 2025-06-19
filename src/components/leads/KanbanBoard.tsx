@@ -124,8 +124,9 @@ const KanbanBoard: React.FC<KanbanBoardProps> = ({ leads, onUpdateStatus, onLead
 
       if (contactsError) throw contactsError;
 
-      toast.success("Lista de contactos creada", {
-        description: `"${listName}" con ${validLeads.length} contactos`
+      // Mostrar notificación de éxito
+      toast.success(`Lista de contactos creada: "${listName}"`, {
+        description: `Se crearon ${validLeads.length} contactos exitosamente`
       });
 
     } catch (error) {
