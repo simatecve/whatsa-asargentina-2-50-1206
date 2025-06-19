@@ -1,4 +1,3 @@
-
 import { useState, useEffect, useCallback } from "react";
 import { useCRMData, Conversation } from "@/hooks/useCRMData";
 import { useSubscriptionValidation } from "@/hooks/useSubscriptionValidation";
@@ -64,12 +63,19 @@ export const useCRMState = () => {
   useEffect(() => {
     const instanceParam = getParam('instance');
     const contactParam = getParam('contact');
+    
+    console.log('URL Params:', { instanceParam, contactParam, allConversationsLength: allConversations.length });
+    
     if (instanceParam && contactParam && allConversations.length > 0) {
       const findInstanceByName = async () => {
         try {
           const { data: { session } } = await supabase.auth.getSession();
-          if (!session) return;
+          if (!session) {
+            console.log('No session found');
+            return;
+          }
           
+          console.log('Looking for instance:', instanceParam);
           const { data: instanceData } = await supabase
             .from('instancias')
             .select('id, nombre')
@@ -77,24 +83,44 @@ export const useCRMState = () => {
             .eq('user_id', session.user.id)
             .single();
           
+          console.log('Instance found:', instanceData);
+          
           if (instanceData) {
+            console.log('Setting instance ID:', instanceData.id);
             setSelectedInstanceId(instanceData.id);
             
-            const targetConversation = allConversations.find(conv => 
-              conv.instancia_nombre === instanceParam && 
-              conv.numero_contacto === contactParam
-            );
-            
-            if (targetConversation) {
-              if (conversations.find(conv => conv.id === targetConversation.id)) {
-                setSelectedConversation(targetConversation);
-                toast.success(`Conversación encontrada con ${targetConversation.nombre_contacto || 'Sin nombre'}`);
+            // Wait a bit for conversations to update with new instance
+            setTimeout(() => {
+              console.log('Looking for conversation with contact:', contactParam);
+              const targetConversation = allConversations.find(conv => {
+                const matches = conv.instancia_nombre === instanceParam && 
+                              conv.numero_contacto === contactParam;
+                console.log('Checking conversation:', {
+                  id: conv.id,
+                  instancia: conv.instancia_nombre,
+                  numero: conv.numero_contacto,
+                  matches
+                });
+                return matches;
+              });
+              
+              console.log('Target conversation found:', targetConversation);
+              
+              if (targetConversation) {
+                const isBlocked = !conversations.find(conv => conv.id === targetConversation.id);
+                console.log('Is conversation blocked:', isBlocked);
+                
+                if (!isBlocked) {
+                  console.log('Selecting conversation:', targetConversation.id);
+                  setSelectedConversation(targetConversation);
+                  toast.success(`Conversación encontrada con ${targetConversation.nombre_contacto || 'Sin nombre'}`);
+                } else {
+                  toast.error('Esta conversación está bloqueada por límite del plan');
+                }
               } else {
-                toast.error('Esta conversación está bloqueada por límite del plan');
+                toast.info(`No se encontró una conversación existente para ${contactParam}. Puedes iniciar una nueva.`);
               }
-            } else {
-              toast.info(`No se encontró una conversación existente para ${contactParam}. Puedes iniciar una nueva.`);
-            }
+            }, 1000);
           } else {
             toast.error(`Instancia "${instanceParam}" no encontrada`);
           }
