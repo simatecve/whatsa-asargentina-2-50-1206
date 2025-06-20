@@ -22,7 +22,7 @@ export const useRealtimeSubscriptions = ({
   const messageDebounceRef = useRef<NodeJS.Timeout | null>(null);
 
   // Debounced functions para evitar múltiples llamadas
-  const debouncedFetchConversations = (delay: number = 1000) => {
+  const debouncedFetchConversations = (delay: number = 500) => {
     if (conversationDebounceRef.current) {
       clearTimeout(conversationDebounceRef.current);
     }
@@ -33,7 +33,7 @@ export const useRealtimeSubscriptions = ({
     }, delay);
   };
 
-  const debouncedFetchMessages = (conversation: Conversation, delay: number = 500) => {
+  const debouncedFetchMessages = (conversation: Conversation, delay: number = 300) => {
     if (messageDebounceRef.current) {
       clearTimeout(messageDebounceRef.current);
     }
@@ -49,7 +49,7 @@ export const useRealtimeSubscriptions = ({
 
     console.log('Setting up optimized realtime subscriptions...');
 
-    // Suscripción optimizada para cambios en conversaciones
+    // Suscripción para cambios en conversaciones
     const conversationsChannel = supabase
       .channel('conversations-realtime-optimized')
       .on(
@@ -60,47 +60,60 @@ export const useRealtimeSubscriptions = ({
           table: 'conversaciones'
         },
         (payload) => {
-          console.log('Conversation change detected:', payload.eventType);
-          // Debounce la actualización de conversaciones
-          debouncedFetchConversations(800);
+          console.log('Conversation change detected:', payload.eventType, payload);
+          // Actualizar conversaciones inmediatamente
+          debouncedFetchConversations(300);
         }
       )
       .subscribe();
 
-    // Suscripción optimizada para nuevos mensajes
+    // Suscripción para nuevos mensajes - esta es la crítica
     const messagesChannel = supabase
       .channel('messages-realtime-optimized')
       .on(
         'postgres_changes',
         {
-          event: '*',
+          event: 'INSERT',
           schema: 'public',
           table: 'mensajes'
         },
         (payload) => {
-          console.log('Message change detected:', payload.eventType);
+          console.log('New message detected:', payload);
           
-          // Actualizar conversaciones siempre (pero con debounce)
-          debouncedFetchConversations(1200);
+          const newMessage = payload.new as any;
+          
+          // Actualizar conversaciones siempre que hay un nuevo mensaje
+          debouncedFetchConversations(200);
           
           // Si estamos viendo una conversación específica, actualizar mensajes
-          if (selectedConversation) {
-            const payloadNew = payload.new as any;
-            const payloadOld = payload.old as any;
-            
-            const newConversationId = payloadNew?.conversation_id;
-            const oldConversationId = payloadOld?.conversation_id;
-              
-            if (newConversationId === selectedConversation.id || oldConversationId === selectedConversation.id) {
-              console.log('Refreshing messages for current conversation');
-              debouncedFetchMessages(selectedConversation, 300);
-            }
+          if (selectedConversation && newMessage?.conversation_id === selectedConversation.id) {
+            console.log('Refreshing messages for current conversation');
+            debouncedFetchMessages(selectedConversation, 100);
+          }
+        }
+      )
+      .on(
+        'postgres_changes',
+        {
+          event: 'UPDATE',
+          schema: 'public',
+          table: 'mensajes'
+        },
+        (payload) => {
+          console.log('Message updated:', payload);
+          
+          const updatedMessage = payload.new as any;
+          
+          // Si estamos viendo una conversación específica, actualizar mensajes
+          if (selectedConversation && updatedMessage?.conversation_id === selectedConversation.id) {
+            console.log('Refreshing messages for current conversation due to update');
+            debouncedFetchMessages(selectedConversation, 100);
           }
         }
       )
       .subscribe();
 
-    // Suscripción para cambios en la tabla contactos_bots (más eficiente)
+    // Suscripción para cambios en la tabla contactos_bots
     const botStatusChannel = supabase
       .channel('bot-status-realtime-optimized')
       .on(
@@ -157,7 +170,7 @@ export const useRealtimeSubscriptions = ({
       )
       .subscribe();
 
-    console.log('Optimized realtime subscriptions active with debouncing');
+    console.log('Optimized realtime subscriptions active with reduced debouncing');
 
     return () => {
       console.log('Cleaning up optimized realtime subscriptions');
