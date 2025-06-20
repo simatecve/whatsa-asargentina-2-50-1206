@@ -6,13 +6,12 @@ import { useConversationLimits } from "@/hooks/useConversationLimits";
 import { useMessageLimits } from "@/hooks/useMessageLimits";
 import { useBotAutoDisable } from "@/hooks/useBotAutoDisable";
 import { useURLParams } from "@/hooks/useURLParams";
-import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 
 export const useCRMState = () => {
   const [selectedInstanceId, setSelectedInstanceId] = useState<string>("all");
   const [navigationProcessed, setNavigationProcessed] = useState(false);
-  const [urlParams, setUrlParams] = useState<{instance?: string; contact?: string} | null>(null);
+  const navigationProcessedRef = useRef(false);
   
   const {
     limits,
@@ -62,101 +61,91 @@ export const useCRMState = () => {
   // Obtener conversaciones filtradas usando la función memoizada
   const conversations = getFilteredConversations(allConversations);
 
-  // Capturar parámetros URL solo una vez al montar el componente
+  // Procesar navegación desde Kanban - efecto unificado y simplificado
   useEffect(() => {
-    if (navigationProcessed) return;
+    // Evitar procesamiento múltiple
+    if (navigationProcessedRef.current) return;
 
-    const instanceParam = getParam('instance');
+    const instanceIdParam = getParam('instanceId');
     const contactParam = getParam('contact');
     
-    if (instanceParam && contactParam) {
-      console.log('Captured URL params:', { instanceParam, contactParam });
-      setUrlParams({ instance: instanceParam, contact: contactParam });
+    if (!instanceIdParam || !contactParam) return;
+
+    console.log('Processing Kanban navigation with instanceId:', instanceIdParam, 'contact:', contactParam);
+
+    // Limpiar los parámetros de URL inmediatamente
+    const url = new URL(window.location.href);
+    url.searchParams.delete('instanceId');
+    url.searchParams.delete('contact');
+    window.history.replaceState({}, '', url.toString());
+
+    // Establecer la instancia
+    setSelectedInstanceId(instanceIdParam);
+    
+    // Marcar como procesado para evitar re-ejecuciones
+    navigationProcessedRef.current = true;
+    setNavigationProcessed(true);
+
+    // Función para buscar y seleccionar conversación cuando las conversaciones estén disponibles
+    const findAndSelectConversation = () => {
+      if (allConversations.length === 0) return false;
       
-      // Limpiar los parámetros de URL inmediatamente
-      const url = new URL(window.location.href);
-      url.searchParams.delete('instance');
-      url.searchParams.delete('contact');
-      window.history.replaceState({}, '', url.toString());
-    }
-  }, [getParam, navigationProcessed]);
-
-  // Procesar navegación desde Kanban - efecto unificado
-  useEffect(() => {
-    if (navigationProcessed || !urlParams) return;
-
-    const processKanbanNavigation = async () => {
-      try {
-        const { data: { session } } = await supabase.auth.getSession();
-        if (!session) {
-          console.log('No session found');
-          return;
-        }
+      console.log('Looking for conversation with contact:', contactParam);
+      
+      const targetConversation = allConversations.find(conv => 
+        conv.numero_contacto === contactParam
+      );
+      
+      if (targetConversation) {
+        const isBlocked = !conversations.find(conv => conv.id === targetConversation.id);
         
-        console.log('Processing Kanban navigation:', urlParams);
-        
-        // Buscar la instancia por nombre
-        const { data: instanceData } = await supabase
-          .from('instancias')
-          .select('id, nombre')
-          .eq('nombre', urlParams.instance)
-          .eq('user_id', session.user.id)
-          .single();
-        
-        if (instanceData) {
-          console.log('Setting instance ID:', instanceData.id);
-          setSelectedInstanceId(instanceData.id);
+        if (!isBlocked) {
+          console.log('Selecting conversation:', targetConversation.id);
+          setSelectedConversation(targetConversation);
+          toast.success(`Conversación encontrada con ${targetConversation.nombre_contacto || 'Sin nombre'}`);
         } else {
-          toast.error(`Instancia "${urlParams.instance}" no encontrada`);
-          setNavigationProcessed(true);
-          return;
+          toast.error('Esta conversación está bloqueada por límite del plan');
         }
-      } catch (error) {
-        console.error('Error processing Kanban navigation:', error);
-        toast.error('Error al procesar la navegación');
-        setNavigationProcessed(true);
+      } else {
+        toast.info(`No se encontró una conversación existente para ${contactParam}. Puedes iniciar una nueva.`);
       }
+      
+      return true;
     };
 
-    processKanbanNavigation();
-  }, [urlParams, navigationProcessed]);
+    // Si las conversaciones ya están disponibles, buscar inmediatamente
+    // Si no, el siguiente useEffect se encargará cuando estén disponibles
+    findAndSelectConversation();
 
-  // Buscar y seleccionar conversación cuando cambien las conversaciones
+  }, [getParam]); // Solo depende de getParam para evitar loops
+
+  // Buscar conversación cuando cambien las conversaciones (solo si viene de navegación Kanban)
   useEffect(() => {
-    if (navigationProcessed || !urlParams || allConversations.length === 0) return;
+    if (!navigationProcessed || allConversations.length === 0) return;
     
-    console.log('Looking for conversation with params:', urlParams);
+    const contactParam = getParam('contact');
+    if (!contactParam) return;
     
-    const targetConversation = allConversations.find(conv => {
-      const matches = conv.instancia_nombre === urlParams.instance && 
-                    conv.numero_contacto === urlParams.contact;
-      console.log('Checking conversation:', {
-        id: conv.id,
-        instancia: conv.instancia_nombre,
-        numero: conv.numero_contacto,
-        matches
-      });
-      return matches;
-    });
+    // Solo ejecutar si aún no hemos seleccionado una conversación
+    if (selectedConversation) return;
+    
+    console.log('Searching for conversation after conversations loaded');
+    
+    const targetConversation = allConversations.find(conv => 
+      conv.numero_contacto === contactParam
+    );
     
     if (targetConversation) {
       const isBlocked = !conversations.find(conv => conv.id === targetConversation.id);
       
       if (!isBlocked) {
-        console.log('Selecting conversation:', targetConversation.id);
+        console.log('Late selecting conversation:', targetConversation.id);
         setSelectedConversation(targetConversation);
-        toast.success(`Conversación encontrada con ${targetConversation.nombre_contacto || 'Sin nombre'}`);
-      } else {
-        toast.error('Esta conversación está bloqueada por límite del plan');
+        // No mostrar toast aquí para evitar duplicados
       }
-    } else {
-      toast.info(`No se encontró una conversación existente para ${urlParams.contact}. Puedes iniciar una nueva.`);
     }
     
-    // Marcar navegación como procesada
-    setNavigationProcessed(true);
-    
-  }, [allConversations, conversations, urlParams, navigationProcessed, setSelectedConversation]);
+  }, [allConversations, conversations, navigationProcessed, selectedConversation, getParam]);
 
   const handleMessageSent = useCallback(async (message: string) => {
     if (selectedConversation) {
@@ -193,8 +182,7 @@ export const useCRMState = () => {
     isAtMessageLimit,
     messageUsage,
     hasMoreMessages,
-    navigationProcessed,
-    urlParams
+    navigationProcessed
   });
 
   return {
