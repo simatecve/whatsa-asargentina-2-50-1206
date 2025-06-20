@@ -11,7 +11,8 @@ import { toast } from "sonner";
 
 export const useCRMState = () => {
   const [selectedInstanceId, setSelectedInstanceId] = useState<string>("all");
-  const [urlParamsProcessed, setUrlParamsProcessed] = useState(false);
+  const [navigationProcessed, setNavigationProcessed] = useState(false);
+  const [urlParams, setUrlParams] = useState<{instance?: string; contact?: string} | null>(null);
   
   const {
     limits,
@@ -61,18 +62,30 @@ export const useCRMState = () => {
   // Obtener conversaciones filtradas usando la función memoizada
   const conversations = getFilteredConversations(allConversations);
 
-  // Handle URL parameters for direct navigation from Kanban - SOLO UNA VEZ
+  // Capturar parámetros URL solo una vez al montar el componente
   useEffect(() => {
-    if (urlParamsProcessed) return;
+    if (navigationProcessed) return;
 
     const instanceParam = getParam('instance');
     const contactParam = getParam('contact');
     
-    if (!instanceParam || !contactParam) return;
+    if (instanceParam && contactParam) {
+      console.log('Captured URL params:', { instanceParam, contactParam });
+      setUrlParams({ instance: instanceParam, contact: contactParam });
+      
+      // Limpiar los parámetros de URL inmediatamente
+      const url = new URL(window.location.href);
+      url.searchParams.delete('instance');
+      url.searchParams.delete('contact');
+      window.history.replaceState({}, '', url.toString());
+    }
+  }, [getParam, navigationProcessed]);
 
-    console.log('Processing URL params:', { instanceParam, contactParam });
-    
-    const processUrlParams = async () => {
+  // Procesar navegación desde Kanban - efecto unificado
+  useEffect(() => {
+    if (navigationProcessed || !urlParams) return;
+
+    const processKanbanNavigation = async () => {
       try {
         const { data: { session } } = await supabase.auth.getSession();
         if (!session) {
@@ -80,11 +93,13 @@ export const useCRMState = () => {
           return;
         }
         
+        console.log('Processing Kanban navigation:', urlParams);
+        
         // Buscar la instancia por nombre
         const { data: instanceData } = await supabase
           .from('instancias')
           .select('id, nombre')
-          .eq('nombre', instanceParam)
+          .eq('nombre', urlParams.instance)
           .eq('user_id', session.user.id)
           .single();
         
@@ -92,38 +107,29 @@ export const useCRMState = () => {
           console.log('Setting instance ID:', instanceData.id);
           setSelectedInstanceId(instanceData.id);
         } else {
-          toast.error(`Instancia "${instanceParam}" no encontrada`);
+          toast.error(`Instancia "${urlParams.instance}" no encontrada`);
+          setNavigationProcessed(true);
+          return;
         }
       } catch (error) {
-        console.error('Error processing URL params:', error);
+        console.error('Error processing Kanban navigation:', error);
         toast.error('Error al procesar la navegación');
-      } finally {
-        setUrlParamsProcessed(true);
-        // Limpiar los parámetros de URL después de procesarlos
-        const url = new URL(window.location.href);
-        url.searchParams.delete('instance');
-        url.searchParams.delete('contact');
-        window.history.replaceState({}, '', url.toString());
+        setNavigationProcessed(true);
       }
     };
 
-    processUrlParams();
-  }, [getParam, urlParamsProcessed]);
+    processKanbanNavigation();
+  }, [urlParams, navigationProcessed]);
 
-  // Buscar y seleccionar conversación cuando cambien las conversaciones y tengamos parámetros URL
+  // Buscar y seleccionar conversación cuando cambien las conversaciones
   useEffect(() => {
-    if (!urlParamsProcessed || allConversations.length === 0) return;
-
-    const contactParam = getParam('contact');
-    const instanceParam = getParam('instance');
+    if (navigationProcessed || !urlParams || allConversations.length === 0) return;
     
-    if (!contactParam || !instanceParam) return;
-
-    console.log('Looking for conversation with:', { contactParam, instanceParam });
+    console.log('Looking for conversation with params:', urlParams);
     
     const targetConversation = allConversations.find(conv => {
-      const matches = conv.instancia_nombre === instanceParam && 
-                    conv.numero_contacto === contactParam;
+      const matches = conv.instancia_nombre === urlParams.instance && 
+                    conv.numero_contacto === urlParams.contact;
       console.log('Checking conversation:', {
         id: conv.id,
         instancia: conv.instancia_nombre,
@@ -144,9 +150,13 @@ export const useCRMState = () => {
         toast.error('Esta conversación está bloqueada por límite del plan');
       }
     } else {
-      toast.info(`No se encontró una conversación existente para ${contactParam}. Puedes iniciar una nueva.`);
+      toast.info(`No se encontró una conversación existente para ${urlParams.contact}. Puedes iniciar una nueva.`);
     }
-  }, [allConversations, conversations, urlParamsProcessed, getParam, setSelectedConversation]);
+    
+    // Marcar navegación como procesada
+    setNavigationProcessed(true);
+    
+  }, [allConversations, conversations, urlParams, navigationProcessed, setSelectedConversation]);
 
   const handleMessageSent = useCallback(async (message: string) => {
     if (selectedConversation) {
@@ -183,7 +193,8 @@ export const useCRMState = () => {
     isAtMessageLimit,
     messageUsage,
     hasMoreMessages,
-    urlParamsProcessed
+    navigationProcessed,
+    urlParams
   });
 
   return {
