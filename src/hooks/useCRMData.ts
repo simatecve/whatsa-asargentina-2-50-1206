@@ -41,24 +41,27 @@ export const useCRMData = (selectedInstanceId?: string) => {
     hasMoreMessages
   } = useOptimizedMessages(setConversations);
 
+  // Callbacks optimizados para tiempo real
+  const realtimeFetchConversations = useCallback(() => {
+    console.log('Real-time: Refreshing conversations immediately');
+    refreshConversations();
+  }, [refreshConversations]);
+
+  const realtimeFetchMessages = useCallback(async (conversation: Conversation) => {
+    console.log('Real-time: Refreshing messages immediately for conversation:', conversation.id);
+    if (selectedConversation?.id === conversation.id) {
+      // Usar fetchMessages sin cache para obtener datos frescos
+      await fetchMessages(conversation, 0, false);
+    }
+  }, [selectedConversation, fetchMessages]);
+
   // Real-time subscriptions optimizadas
   useRealtimeSubscriptions({
     userData,
     selectedInstanceId,
     selectedConversation,
-    fetchConversations: useCallback((instanceId?: string) => {
-      // Usar debounce para evitar múltiples calls
-      const timeoutId = setTimeout(() => {
-        refreshConversations();
-      }, 500);
-      
-      return () => clearTimeout(timeoutId);
-    }, [refreshConversations]),
-    fetchMessages: useCallback(async (conversation: Conversation) => {
-      if (selectedConversation?.id === conversation.id) {
-        refreshMessages(conversation);
-      }
-    }, [selectedConversation, refreshMessages])
+    fetchConversations: realtimeFetchConversations,
+    fetchMessages: realtimeFetchMessages
   });
 
   // Handler para cambiar la conversación seleccionada

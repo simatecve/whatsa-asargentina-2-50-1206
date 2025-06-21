@@ -7,7 +7,7 @@ interface UseRealtimeSubscriptionsProps {
   userData: any;
   selectedInstanceId?: string;
   selectedConversation: Conversation | null;
-  fetchConversations: (instanceId?: string) => void;
+  fetchConversations: () => void;
   fetchMessages: (conversation: Conversation) => Promise<void>;
 }
 
@@ -22,18 +22,18 @@ export const useRealtimeSubscriptions = ({
   const messageDebounceRef = useRef<NodeJS.Timeout | null>(null);
 
   // Debounced functions para evitar múltiples llamadas
-  const debouncedFetchConversations = (delay: number = 500) => {
+  const debouncedFetchConversations = (delay: number = 200) => {
     if (conversationDebounceRef.current) {
       clearTimeout(conversationDebounceRef.current);
     }
     
     conversationDebounceRef.current = setTimeout(() => {
       console.log('Debounced: Refreshing conversations...');
-      fetchConversations(selectedInstanceId);
+      fetchConversations();
     }, delay);
   };
 
-  const debouncedFetchMessages = (conversation: Conversation, delay: number = 300) => {
+  const debouncedFetchMessages = (conversation: Conversation, delay: number = 100) => {
     if (messageDebounceRef.current) {
       clearTimeout(messageDebounceRef.current);
     }
@@ -47,11 +47,11 @@ export const useRealtimeSubscriptions = ({
   useEffect(() => {
     if (!userData) return;
 
-    console.log('Setting up optimized realtime subscriptions...');
+    console.log('Setting up real-time subscriptions for incoming messages...');
 
     // Suscripción para cambios en conversaciones
     const conversationsChannel = supabase
-      .channel('conversations-realtime-optimized')
+      .channel('conversations-realtime-live')
       .on(
         'postgres_changes',
         {
@@ -61,15 +61,15 @@ export const useRealtimeSubscriptions = ({
         },
         (payload) => {
           console.log('Conversation change detected:', payload.eventType, payload);
-          // Actualizar conversaciones inmediatamente
-          debouncedFetchConversations(300);
+          // Actualizar conversaciones inmediatamente para mensajes entrantes
+          debouncedFetchConversations(100);
         }
       )
       .subscribe();
 
-    // Suscripción para nuevos mensajes - esta es la crítica
+    // Suscripción crítica para mensajes entrantes
     const messagesChannel = supabase
-      .channel('messages-realtime-optimized')
+      .channel('messages-realtime-live')
       .on(
         'postgres_changes',
         {
@@ -78,17 +78,17 @@ export const useRealtimeSubscriptions = ({
           table: 'mensajes'
         },
         (payload) => {
-          console.log('New message detected:', payload);
+          console.log('New incoming message detected:', payload);
           
           const newMessage = payload.new as any;
           
-          // Actualizar conversaciones siempre que hay un nuevo mensaje
-          debouncedFetchConversations(200);
+          // CRÍTICO: Actualizar conversaciones inmediatamente para nuevos mensajes
+          debouncedFetchConversations(50);
           
-          // Si estamos viendo una conversación específica, actualizar mensajes
+          // Si estamos viendo esta conversación, actualizar mensajes inmediatamente
           if (selectedConversation && newMessage?.conversation_id === selectedConversation.id) {
-            console.log('Refreshing messages for current conversation');
-            debouncedFetchMessages(selectedConversation, 100);
+            console.log('Updating messages for current conversation - INCOMING MESSAGE');
+            debouncedFetchMessages(selectedConversation, 50);
           }
         }
       )
@@ -104,10 +104,10 @@ export const useRealtimeSubscriptions = ({
           
           const updatedMessage = payload.new as any;
           
-          // Si estamos viendo una conversación específica, actualizar mensajes
+          // Si estamos viendo esta conversación, actualizar mensajes
           if (selectedConversation && updatedMessage?.conversation_id === selectedConversation.id) {
-            console.log('Refreshing messages for current conversation due to update');
-            debouncedFetchMessages(selectedConversation, 100);
+            console.log('Updating messages for current conversation - MESSAGE UPDATE');
+            debouncedFetchMessages(selectedConversation, 50);
           }
         }
       )
@@ -115,7 +115,7 @@ export const useRealtimeSubscriptions = ({
 
     // Suscripción para cambios en la tabla contactos_bots
     const botStatusChannel = supabase
-      .channel('bot-status-realtime-optimized')
+      .channel('bot-status-realtime-live')
       .on(
         'postgres_changes',
         {
@@ -170,10 +170,10 @@ export const useRealtimeSubscriptions = ({
       )
       .subscribe();
 
-    console.log('Optimized realtime subscriptions active with reduced debouncing');
+    console.log('Real-time subscriptions active for immediate message updates');
 
     return () => {
-      console.log('Cleaning up optimized realtime subscriptions');
+      console.log('Cleaning up real-time subscriptions');
       
       // Limpiar timeouts
       if (conversationDebounceRef.current) {
