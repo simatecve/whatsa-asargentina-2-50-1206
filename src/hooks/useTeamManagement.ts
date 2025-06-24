@@ -1,7 +1,7 @@
 
 import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
-import { TeamMember, ConversationAssignment, InternalNote, SmartTemplate } from "@/types/team";
+import { TeamMember, ConversationAssignment, InternalNote, SmartTemplate, ExpertiseArea } from "@/types/team";
 import { toast } from "sonner";
 
 export const useTeamManagement = () => {
@@ -103,11 +103,11 @@ export const useTeamManagement = () => {
   };
 
   // Auto assign conversation
-  const autoAssignConversation = async (conversationId: string, expertiseRequired?: string) => {
+  const autoAssignConversation = async (conversationId: string, expertiseRequired: ExpertiseArea = 'general') => {
     try {
       const { data, error } = await supabase.rpc('auto_assign_conversation', {
         p_conversation_id: conversationId,
-        p_expertise_required: expertiseRequired || 'general'
+        p_expertise_required: expertiseRequired
       });
 
       if (error) throw error;
@@ -222,7 +222,7 @@ export const useTeamManagement = () => {
   };
 
   // Get contextual templates
-  const getContextualTemplates = async (messageContent: string = '', expertiseArea: string = 'general') => {
+  const getContextualTemplates = async (messageContent: string = '', expertiseArea: ExpertiseArea = 'general') => {
     try {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) return [];
@@ -246,7 +246,7 @@ export const useTeamManagement = () => {
     title: string;
     content: string;
     context_triggers: string[];
-    expertise_area: string;
+    expertise_area: ExpertiseArea;
   }) => {
     try {
       const { data: { user } } = await supabase.auth.getUser();

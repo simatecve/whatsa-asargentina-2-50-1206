@@ -81,6 +81,11 @@ const MessageInput = ({ onSendMessage, selectedConversation, disabled }: Message
     textareaRef.current?.focus();
   };
 
+  const handleEmojiSelect = (emoji: string) => {
+    setMessage(prev => prev + emoji);
+    textareaRef.current?.focus();
+  };
+
   if (!selectedConversation) {
     return null;
   }
@@ -92,10 +97,7 @@ const MessageInput = ({ onSendMessage, selectedConversation, disabled }: Message
       
       {/* Quick replies */}
       {quickReplies.length > 0 && (
-        <QuickRepliesSelector 
-          quickReplies={quickReplies}
-          onSelectReply={handleQuickReply}
-        />
+        <QuickRepliesSelector onSelectReply={handleQuickReply} />
       )}
 
       {/* Message input */}
@@ -121,7 +123,10 @@ const MessageInput = ({ onSendMessage, selectedConversation, disabled }: Message
           />
           
           {/* Message actions */}
-          <MessageInputActions />
+          <MessageInputActions 
+            onEmojiSelect={handleEmojiSelect}
+            onQuickReplySelect={handleQuickReply}
+          />
           
           {/* Send button */}
           <Button

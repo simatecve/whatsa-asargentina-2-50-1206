@@ -1,7 +1,7 @@
 
 import { CRMHeader } from "@/components/crm/CRMHeader";
 import { CRMSubscriptionAlerts } from "@/components/crm/CRMSubscriptionAlerts";
-import { CRMMainContent } from "@/components/crm/CRMMainContent";
+import CRMMainContent from "@/components/crm/CRMMainContent";
 import { useCRMState } from "@/hooks/crm/useCRMState";
 
 const CRM = () => {
@@ -56,18 +56,12 @@ const CRM = () => {
         <CRMMainContent
           conversations={conversations}
           selectedConversation={selectedConversation}
-          messages={messages}
+          setSelectedConversation={setSelectedConversation}
           loading={loading}
           messagesLoading={messagesLoading}
-          blockedConversationsCount={blockedConversations.length}
-          hasBlockedConversations={hasBlockedConversations}
-          onSelectConversation={setSelectedConversation}
-          onMessageSent={handleMessageSent}
-          updateConversationAfterSend={updateConversationAfterSend}
-          isAtMessageLimit={isAtMessageLimit}
-          messageUsage={messageUsage}
           hasMoreMessages={hasMoreMessages}
-          onLoadMoreMessages={handleLoadMoreMessages}
+          handleLoadMoreMessages={handleLoadMoreMessages}
+          handleMessageSent={handleMessageSent}
         />
       </div>
     </div>

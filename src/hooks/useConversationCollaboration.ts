@@ -24,8 +24,14 @@ export const useConversationCollaboration = (conversationId: string) => {
 
       if (error) throw error;
 
-      const formattedCollaborators = data?.map(collab => ({
-        ...collab,
+      const formattedCollaborators: ConversationCollaborator[] = data?.map(collab => ({
+        id: collab.id,
+        conversation_id: collab.conversation_id,
+        user_id: collab.user_id,
+        role: (collab.role as 'primary' | 'collaborator' | 'observer') || 'observer',
+        joined_at: collab.joined_at,
+        last_seen: collab.last_seen || new Date().toISOString(),
+        is_typing: collab.is_typing || false,
         user_name: collab.user?.nombre
       })) || [];
 

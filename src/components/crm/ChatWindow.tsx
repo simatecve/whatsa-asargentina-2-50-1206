@@ -2,7 +2,7 @@
 import { useCallback } from "react";
 import { ArrowLeft } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { MessageInput } from "./MessageInput";
+import MessageInput from "./MessageInput";
 import { ChatHeader } from "./ChatHeader";
 import { ChatMessages } from "./ChatMessages";
 import { BotToggleButton } from "./BotToggleButton";

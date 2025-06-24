@@ -1,7 +1,7 @@
 
 import React from "react";
-import ConversationList from "./ConversationList";
-import ChatWindow from "./ChatWindow";
+import { ConversationList } from "./ConversationList";
+import { ChatWindow } from "./ChatWindow";
 import { InternalNotesPanel } from "./InternalNotesPanel";
 import { Conversation } from "@/types/crm";
 
@@ -16,7 +16,7 @@ interface CRMMainContentProps {
   handleMessageSent: (message: string) => void;
 }
 
-const CRMMainContent = ({
+export const CRMMainContent = ({
   conversations,
   selectedConversation,
   setSelectedConversation,

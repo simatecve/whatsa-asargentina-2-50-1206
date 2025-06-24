@@ -33,7 +33,20 @@ export const SmartTemplateSelector = ({
 
   const loadTemplates = async () => {
     const contextualTemplates = await getContextualTemplates(contextMessage, expertiseArea);
-    setTemplates(contextualTemplates);
+    // Map the result to match SmartTemplate interface
+    const mappedTemplates: SmartTemplate[] = contextualTemplates.map(template => ({
+      id: template.id,
+      owner_user_id: '', // This will be populated by the database function
+      title: template.title,
+      content: template.content,
+      context_triggers: [], // This will be populated by the database function
+      expertise_area: 'general', // This will be populated by the database function
+      usage_count: template.usage_count,
+      is_active: true,
+      created_at: new Date().toISOString(),
+      updated_at: new Date().toISOString()
+    }));
+    setTemplates(mappedTemplates);
   };
 
   const filteredTemplates = templates.filter(template =>
