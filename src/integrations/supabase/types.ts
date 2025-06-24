@@ -342,6 +342,115 @@ export type Database = {
         }
         Relationships: []
       }
+      conversation_assignments: {
+        Row: {
+          assigned_at: string
+          assigned_by_user_id: string | null
+          assigned_to_user_id: string
+          conversation_id: string
+          expertise_required:
+            | Database["public"]["Enums"]["expertise_area"]
+            | null
+          id: string
+          notes: string | null
+          priority: number | null
+          status: string | null
+        }
+        Insert: {
+          assigned_at?: string
+          assigned_by_user_id?: string | null
+          assigned_to_user_id: string
+          conversation_id: string
+          expertise_required?:
+            | Database["public"]["Enums"]["expertise_area"]
+            | null
+          id?: string
+          notes?: string | null
+          priority?: number | null
+          status?: string | null
+        }
+        Update: {
+          assigned_at?: string
+          assigned_by_user_id?: string | null
+          assigned_to_user_id?: string
+          conversation_id?: string
+          expertise_required?:
+            | Database["public"]["Enums"]["expertise_area"]
+            | null
+          id?: string
+          notes?: string | null
+          priority?: number | null
+          status?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "conversation_assignments_assigned_by_user_id_fkey"
+            columns: ["assigned_by_user_id"]
+            isOneToOne: false
+            referencedRelation: "usuarios"
+            referencedColumns: ["user_id"]
+          },
+          {
+            foreignKeyName: "conversation_assignments_assigned_to_user_id_fkey"
+            columns: ["assigned_to_user_id"]
+            isOneToOne: false
+            referencedRelation: "usuarios"
+            referencedColumns: ["user_id"]
+          },
+          {
+            foreignKeyName: "conversation_assignments_conversation_id_fkey"
+            columns: ["conversation_id"]
+            isOneToOne: false
+            referencedRelation: "conversaciones"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      conversation_collaborators: {
+        Row: {
+          conversation_id: string
+          id: string
+          is_typing: boolean | null
+          joined_at: string
+          last_seen: string | null
+          role: string | null
+          user_id: string
+        }
+        Insert: {
+          conversation_id: string
+          id?: string
+          is_typing?: boolean | null
+          joined_at?: string
+          last_seen?: string | null
+          role?: string | null
+          user_id: string
+        }
+        Update: {
+          conversation_id?: string
+          id?: string
+          is_typing?: boolean | null
+          joined_at?: string
+          last_seen?: string | null
+          role?: string | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "conversation_collaborators_conversation_id_fkey"
+            columns: ["conversation_id"]
+            isOneToOne: false
+            referencedRelation: "conversaciones"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "conversation_collaborators_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "usuarios"
+            referencedColumns: ["user_id"]
+          },
+        ]
+      }
       crm_settings: {
         Row: {
           created_at: string
@@ -458,6 +567,54 @@ export type Database = {
           webhook?: string | null
         }
         Relationships: []
+      }
+      internal_notes: {
+        Row: {
+          author_user_id: string
+          content: string
+          conversation_id: string
+          created_at: string
+          id: string
+          is_private: boolean | null
+          mentioned_users: string[] | null
+          updated_at: string
+        }
+        Insert: {
+          author_user_id: string
+          content: string
+          conversation_id: string
+          created_at?: string
+          id?: string
+          is_private?: boolean | null
+          mentioned_users?: string[] | null
+          updated_at?: string
+        }
+        Update: {
+          author_user_id?: string
+          content?: string
+          conversation_id?: string
+          created_at?: string
+          id?: string
+          is_private?: boolean | null
+          mentioned_users?: string[] | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "internal_notes_author_user_id_fkey"
+            columns: ["author_user_id"]
+            isOneToOne: false
+            referencedRelation: "usuarios"
+            referencedColumns: ["user_id"]
+          },
+          {
+            foreignKeyName: "internal_notes_conversation_id_fkey"
+            columns: ["conversation_id"]
+            isOneToOne: false
+            referencedRelation: "conversaciones"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       kanban_columns: {
         Row: {
@@ -918,6 +1075,53 @@ export type Database = {
         }
         Relationships: []
       }
+      smart_templates: {
+        Row: {
+          content: string
+          context_triggers: string[] | null
+          created_at: string
+          expertise_area: Database["public"]["Enums"]["expertise_area"] | null
+          id: string
+          is_active: boolean | null
+          owner_user_id: string
+          title: string
+          updated_at: string
+          usage_count: number | null
+        }
+        Insert: {
+          content: string
+          context_triggers?: string[] | null
+          created_at?: string
+          expertise_area?: Database["public"]["Enums"]["expertise_area"] | null
+          id?: string
+          is_active?: boolean | null
+          owner_user_id: string
+          title: string
+          updated_at?: string
+          usage_count?: number | null
+        }
+        Update: {
+          content?: string
+          context_triggers?: string[] | null
+          created_at?: string
+          expertise_area?: Database["public"]["Enums"]["expertise_area"] | null
+          id?: string
+          is_active?: boolean | null
+          owner_user_id?: string
+          title?: string
+          updated_at?: string
+          usage_count?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "smart_templates_owner_user_id_fkey"
+            columns: ["owner_user_id"]
+            isOneToOne: false
+            referencedRelation: "usuarios"
+            referencedColumns: ["user_id"]
+          },
+        ]
+      }
       suscripciones: {
         Row: {
           created_at: string
@@ -963,6 +1167,69 @@ export type Database = {
           {
             foreignKeyName: "suscripciones_user_id_fkey"
             columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "usuarios"
+            referencedColumns: ["user_id"]
+          },
+        ]
+      }
+      team_members: {
+        Row: {
+          created_at: string
+          current_conversation_count: number | null
+          expertise_areas:
+            | Database["public"]["Enums"]["expertise_area"][]
+            | null
+          id: string
+          is_active: boolean | null
+          max_concurrent_conversations: number | null
+          member_user_id: string
+          owner_user_id: string
+          role: Database["public"]["Enums"]["team_role"]
+          status: Database["public"]["Enums"]["assignment_status"]
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          current_conversation_count?: number | null
+          expertise_areas?:
+            | Database["public"]["Enums"]["expertise_area"][]
+            | null
+          id?: string
+          is_active?: boolean | null
+          max_concurrent_conversations?: number | null
+          member_user_id: string
+          owner_user_id: string
+          role?: Database["public"]["Enums"]["team_role"]
+          status?: Database["public"]["Enums"]["assignment_status"]
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          current_conversation_count?: number | null
+          expertise_areas?:
+            | Database["public"]["Enums"]["expertise_area"][]
+            | null
+          id?: string
+          is_active?: boolean | null
+          max_concurrent_conversations?: number | null
+          member_user_id?: string
+          owner_user_id?: string
+          role?: Database["public"]["Enums"]["team_role"]
+          status?: Database["public"]["Enums"]["assignment_status"]
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "team_members_member_user_id_fkey"
+            columns: ["member_user_id"]
+            isOneToOne: false
+            referencedRelation: "usuarios"
+            referencedColumns: ["user_id"]
+          },
+          {
+            foreignKeyName: "team_members_owner_user_id_fkey"
+            columns: ["owner_user_id"]
             isOneToOne: false
             referencedRelation: "usuarios"
             referencedColumns: ["user_id"]
@@ -1058,6 +1325,13 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      auto_assign_conversation: {
+        Args: {
+          p_conversation_id: string
+          p_expertise_required?: Database["public"]["Enums"]["expertise_area"]
+        }
+        Returns: string
+      }
       check_user_limits: {
         Args: { p_user_id: string; p_resource_type: string }
         Returns: boolean
@@ -1069,6 +1343,19 @@ export type Database = {
           p_pushname?: string
         }
         Returns: number
+      }
+      get_contextual_templates: {
+        Args: {
+          p_user_id: string
+          p_message_content?: string
+          p_expertise_area?: Database["public"]["Enums"]["expertise_area"]
+        }
+        Returns: {
+          id: string
+          title: string
+          content: string
+          usage_count: number
+        }[]
       }
       get_lead_for_conversation: {
         Args: { p_numero_contacto: string; p_instancia_nombre: string }
@@ -1095,6 +1382,8 @@ export type Database = {
       }
     }
     Enums: {
+      assignment_status: "available" | "busy" | "offline"
+      expertise_area: "sales" | "support" | "technical" | "billing" | "general"
       lead_status:
         | "new"
         | "contacted"
@@ -1103,6 +1392,7 @@ export type Database = {
         | "negotiation"
         | "won"
         | "lost"
+      team_role: "owner" | "admin" | "agent" | "viewer"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -1218,6 +1508,8 @@ export type CompositeTypes<
 export const Constants = {
   public: {
     Enums: {
+      assignment_status: ["available", "busy", "offline"],
+      expertise_area: ["sales", "support", "technical", "billing", "general"],
       lead_status: [
         "new",
         "contacted",
@@ -1227,6 +1519,7 @@ export const Constants = {
         "won",
         "lost",
       ],
+      team_role: ["owner", "admin", "agent", "viewer"],
     },
   },
 } as const
