@@ -1236,6 +1236,47 @@ export type Database = {
           },
         ]
       }
+      team_users: {
+        Row: {
+          created_at: string
+          email: string
+          id: string
+          is_active: boolean | null
+          nombre: string
+          owner_user_id: string
+          password_hash: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          email: string
+          id?: string
+          is_active?: boolean | null
+          nombre: string
+          owner_user_id: string
+          password_hash: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          email?: string
+          id?: string
+          is_active?: boolean | null
+          nombre?: string
+          owner_user_id?: string
+          password_hash?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "team_users_owner_user_id_fkey"
+            columns: ["owner_user_id"]
+            isOneToOne: false
+            referencedRelation: "usuarios"
+            referencedColumns: ["user_id"]
+          },
+        ]
+      }
       token_consumption: {
         Row: {
           created_at: string
@@ -1325,13 +1366,6 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
-      auto_assign_conversation: {
-        Args: {
-          p_conversation_id: string
-          p_expertise_required?: Database["public"]["Enums"]["expertise_area"]
-        }
-        Returns: string
-      }
       check_user_limits: {
         Args: { p_user_id: string; p_resource_type: string }
         Returns: boolean
@@ -1343,19 +1377,6 @@ export type Database = {
           p_pushname?: string
         }
         Returns: number
-      }
-      get_contextual_templates: {
-        Args: {
-          p_user_id: string
-          p_message_content?: string
-          p_expertise_area?: Database["public"]["Enums"]["expertise_area"]
-        }
-        Returns: {
-          id: string
-          title: string
-          content: string
-          usage_count: number
-        }[]
       }
       get_lead_for_conversation: {
         Args: { p_numero_contacto: string; p_instancia_nombre: string }
@@ -1383,7 +1404,16 @@ export type Database = {
     }
     Enums: {
       assignment_status: "available" | "busy" | "offline"
-      expertise_area: "sales" | "support" | "technical" | "billing" | "general"
+      expertise_area:
+        | "conexion"
+        | "crm"
+        | "leads_kanban"
+        | "contactos"
+        | "campanas"
+        | "agente_ia"
+        | "analiticas"
+        | "configuracion"
+        | "general"
       lead_status:
         | "new"
         | "contacted"
@@ -1509,7 +1539,17 @@ export const Constants = {
   public: {
     Enums: {
       assignment_status: ["available", "busy", "offline"],
-      expertise_area: ["sales", "support", "technical", "billing", "general"],
+      expertise_area: [
+        "conexion",
+        "crm",
+        "leads_kanban",
+        "contactos",
+        "campanas",
+        "agente_ia",
+        "analiticas",
+        "configuracion",
+        "general",
+      ],
       lead_status: [
         "new",
         "contacted",

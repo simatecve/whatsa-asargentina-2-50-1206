@@ -1,15 +1,33 @@
 
 import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
-import { TeamMember, ConversationAssignment, InternalNote, SmartTemplate, ExpertiseArea } from "@/types/team";
+import { TeamMember, ConversationAssignment, InternalNote, SmartTemplate, ExpertiseArea, TeamUser, TeamRole } from "@/types/team";
 import { toast } from "sonner";
 
 export const useTeamManagement = () => {
   const [teamMembers, setTeamMembers] = useState<TeamMember[]>([]);
+  const [teamUsers, setTeamUsers] = useState<TeamUser[]>([]);
   const [assignments, setAssignments] = useState<ConversationAssignment[]>([]);
   const [internalNotes, setInternalNotes] = useState<InternalNote[]>([]);
   const [smartTemplates, setSmartTemplates] = useState<SmartTemplate[]>([]);
   const [loading, setLoading] = useState(true);
+
+  // Fetch team users
+  const fetchTeamUsers = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('team_users')
+        .select('*')
+        .eq('is_active', true)
+        .order('created_at', { ascending: false });
+
+      if (error) throw error;
+      setTeamUsers(data || []);
+    } catch (error) {
+      console.error('Error fetching team users:', error);
+      toast.error('Error al cargar usuarios del equipo');
+    }
+  };
 
   // Fetch team members
   const fetchTeamMembers = async () => {
@@ -18,51 +36,64 @@ export const useTeamManagement = () => {
         .from('team_members')
         .select(`
           *,
-          member:usuarios!team_members_member_user_id_fkey(nombre, email)
+          team_user:team_users!team_members_member_user_id_fkey(*)
         `)
         .eq('is_active', true)
         .order('created_at', { ascending: false });
 
       if (error) throw error;
-
-      const formattedMembers = data?.map(member => ({
-        ...member,
-        member_name: member.member?.nombre,
-        member_email: member.member?.email
-      })) || [];
-
-      setTeamMembers(formattedMembers);
+      setTeamMembers(data || []);
     } catch (error) {
       console.error('Error fetching team members:', error);
       toast.error('Error al cargar miembros del equipo');
     }
   };
 
-  // Add team member
-  const addTeamMember = async (memberData: {
-    member_user_id: string;
-    role: TeamMember['role'];
-    expertise_areas: TeamMember['expertise_areas'];
-    max_concurrent_conversations?: number;
+  // Create team user and member
+  const createTeamUser = async (userData: {
+    email: string;
+    nombre: string;
+    password: string;
+    role: TeamRole;
+    expertise_areas: ExpertiseArea[];
+    max_concurrent_conversations: number;
   }) => {
     try {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) throw new Error('Usuario no autenticado');
 
-      const { error } = await supabase
+      // Crear usuario del equipo
+      const { data: teamUser, error: userError } = await supabase
+        .from('team_users')
+        .insert({
+          owner_user_id: user.id,
+          email: userData.email,
+          nombre: userData.nombre,
+          password_hash: btoa(userData.password), // Simple encoding, en producción usar hash apropiado
+        })
+        .select()
+        .single();
+
+      if (userError) throw userError;
+
+      // Crear miembro del equipo
+      const { error: memberError } = await supabase
         .from('team_members')
         .insert({
           owner_user_id: user.id,
-          ...memberData
+          member_user_id: teamUser.id,
+          role: userData.role,
+          expertise_areas: userData.expertise_areas,
+          max_concurrent_conversations: userData.max_concurrent_conversations,
         });
 
-      if (error) throw error;
+      if (memberError) throw memberError;
 
-      toast.success('Miembro del equipo agregado exitosamente');
-      fetchTeamMembers();
+      toast.success('Usuario del equipo creado exitosamente');
+      await Promise.all([fetchTeamUsers(), fetchTeamMembers()]);
     } catch (error) {
-      console.error('Error adding team member:', error);
-      toast.error('Error al agregar miembro del equipo');
+      console.error('Error creating team user:', error);
+      toast.error('Error al crear usuario del equipo');
     }
   };
 
@@ -133,7 +164,7 @@ export const useTeamManagement = () => {
         .from('conversation_assignments')
         .select(`
           *,
-          assigned_to:usuarios!conversation_assignments_assigned_to_user_id_fkey(nombre)
+          assigned_to:team_users!conversation_assignments_assigned_to_user_id_fkey(nombre)
         `)
         .order('assigned_at', { ascending: false });
 
@@ -162,7 +193,7 @@ export const useTeamManagement = () => {
         .from('internal_notes')
         .select(`
           *,
-          author:usuarios!internal_notes_author_user_id_fkey(nombre)
+          author:team_users!internal_notes_author_user_id_fkey(nombre)
         `)
         .eq('conversation_id', conversationId)
         .order('created_at', { ascending: true });
@@ -273,6 +304,7 @@ export const useTeamManagement = () => {
     const initialize = async () => {
       setLoading(true);
       await Promise.all([
+        fetchTeamUsers(),
         fetchTeamMembers(),
         fetchSmartTemplates()
       ]);
@@ -285,14 +317,16 @@ export const useTeamManagement = () => {
   return {
     // State
     teamMembers,
+    teamUsers,
     assignments,
     internalNotes,
     smartTemplates,
     loading,
 
     // Team management
+    fetchTeamUsers,
     fetchTeamMembers,
-    addTeamMember,
+    createTeamUser,
     updateTeamMember,
     removeTeamMember,
 

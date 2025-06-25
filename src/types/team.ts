@@ -1,7 +1,18 @@
 
 export type TeamRole = 'owner' | 'admin' | 'agent' | 'viewer';
 export type AssignmentStatus = 'available' | 'busy' | 'offline';
-export type ExpertiseArea = 'sales' | 'support' | 'technical' | 'billing' | 'general';
+export type ExpertiseArea = 'conexion' | 'crm' | 'leads_kanban' | 'contactos' | 'campanas' | 'agente_ia' | 'analiticas' | 'configuracion' | 'general';
+
+export interface TeamUser {
+  id: string;
+  owner_user_id: string;
+  email: string;
+  nombre: string;
+  password_hash: string;
+  is_active: boolean;
+  created_at: string;
+  updated_at: string;
+}
 
 export interface TeamMember {
   id: string;
@@ -15,8 +26,7 @@ export interface TeamMember {
   created_at: string;
   updated_at: string;
   is_active: boolean;
-  member_name?: string;
-  member_email?: string;
+  team_user?: TeamUser;
 }
 
 export interface ConversationAssignment {

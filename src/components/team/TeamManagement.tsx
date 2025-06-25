@@ -6,7 +6,7 @@ import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Users, UserPlus, Settings, MessageSquare } from "lucide-react";
 import { useTeamManagement } from "@/hooks/useTeamManagement";
-import { TeamMemberDialog } from "./TeamMemberDialog";
+import { TeamUserDialog } from "./TeamUserDialog";
 import { SmartTemplatesManager } from "./SmartTemplatesManager";
 import { TeamMember } from "@/types/team";
 
@@ -14,11 +14,12 @@ const TeamManagement = () => {
   const {
     teamMembers,
     loading,
+    createTeamUser,
     updateTeamMember,
     removeTeamMember
   } = useTeamManagement();
 
-  const [showAddMember, setShowAddMember] = useState(false);
+  const [showAddUser, setShowAddUser] = useState(false);
   const [editingMember, setEditingMember] = useState<TeamMember | null>(null);
 
   const getRoleBadgeColor = (role: string) => {
@@ -39,6 +40,21 @@ const TeamManagement = () => {
     }
   };
 
+  const getExpertiseLabel = (expertise: string) => {
+    const labels = {
+      'conexion': 'Conexión',
+      'crm': 'CRM/Mensajería',
+      'leads_kanban': 'Leads Kanban',
+      'contactos': 'Contactos',
+      'campanas': 'Campañas',
+      'agente_ia': 'Agente IA',
+      'analiticas': 'Analíticas',
+      'configuracion': 'Configuración',
+      'general': 'General'
+    };
+    return labels[expertise] || expertise;
+  };
+
   if (loading) {
     return (
       <div className="flex items-center justify-center h-64">
@@ -53,12 +69,12 @@ const TeamManagement = () => {
         <div>
           <h2 className="text-2xl font-bold">Gestión de Equipos</h2>
           <p className="text-muted-foreground">
-            Administra tu equipo de trabajo y asignaciones
+            Crea y administra usuarios para tu equipo de trabajo
           </p>
         </div>
-        <Button onClick={() => setShowAddMember(true)}>
+        <Button onClick={() => setShowAddUser(true)}>
           <UserPlus className="h-4 w-4 mr-2" />
-          Agregar Miembro
+          Crear Usuario del Equipo
         </Button>
       </div>
 
@@ -66,7 +82,7 @@ const TeamManagement = () => {
         <TabsList>
           <TabsTrigger value="members">
             <Users className="h-4 w-4 mr-2" />
-            Miembros del Equipo
+            Mi Equipo
           </TabsTrigger>
           <TabsTrigger value="templates">
             <MessageSquare className="h-4 w-4 mr-2" />
@@ -82,10 +98,10 @@ const TeamManagement = () => {
                   <div className="flex justify-between items-start">
                     <div>
                       <CardTitle className="text-lg">
-                        {member.member_name || 'Sin nombre'}
+                        {member.team_user?.nombre || 'Sin nombre'}
                       </CardTitle>
                       <p className="text-sm text-muted-foreground">
-                        {member.member_email}
+                        {member.team_user?.email}
                       </p>
                     </div>
                     <Button
@@ -100,19 +116,23 @@ const TeamManagement = () => {
                 <CardContent className="space-y-3">
                   <div className="flex gap-2">
                     <Badge className={getRoleBadgeColor(member.role)}>
-                      {member.role}
+                      {member.role === 'admin' ? 'Administrador' : 
+                       member.role === 'agent' ? 'Agente' : 
+                       member.role === 'viewer' ? 'Observador' : member.role}
                     </Badge>
                     <Badge className={getStatusBadgeColor(member.status)}>
-                      {member.status}
+                      {member.status === 'available' ? 'Disponible' :
+                       member.status === 'busy' ? 'Ocupado' : 
+                       member.status === 'offline' ? 'Desconectado' : member.status}
                     </Badge>
                   </div>
                   
                   <div>
                     <p className="text-sm font-medium">Especialidades:</p>
                     <div className="flex flex-wrap gap-1 mt-1">
-                      {member.expertise_areas.map((area, index) => (
+                      {member.expertise_areas?.map((area, index) => (
                         <Badge key={index} variant="outline" className="text-xs">
-                          {area}
+                          {getExpertiseLabel(area)}
                         </Badge>
                       ))}
                     </div>
@@ -152,13 +172,13 @@ const TeamManagement = () => {
             <Card>
               <CardContent className="py-8 text-center">
                 <Users className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
-                <h3 className="text-lg font-medium mb-2">No hay miembros del equipo</h3>
+                <h3 className="text-lg font-medium mb-2">No tienes usuarios en tu equipo</h3>
                 <p className="text-muted-foreground mb-4">
-                  Comienza agregando miembros a tu equipo para mejorar la colaboración
+                  Crea usuarios específicos para tu equipo y asigna roles y especialidades
                 </p>
-                <Button onClick={() => setShowAddMember(true)}>
+                <Button onClick={() => setShowAddUser(true)}>
                   <UserPlus className="h-4 w-4 mr-2" />
-                  Agregar Primer Miembro
+                  Crear Primer Usuario del Equipo
                 </Button>
               </CardContent>
             </Card>
@@ -170,15 +190,16 @@ const TeamManagement = () => {
         </TabsContent>
       </Tabs>
 
-      <TeamMemberDialog
-        open={showAddMember || !!editingMember}
+      <TeamUserDialog
+        open={showAddUser || !!editingMember}
         onOpenChange={(open) => {
           if (!open) {
-            setShowAddMember(false);
+            setShowAddUser(false);
             setEditingMember(null);
           }
         }}
-        member={editingMember}
+        teamUser={editingMember?.team_user}
+        onSave={createTeamUser}
       />
     </div>
   );
