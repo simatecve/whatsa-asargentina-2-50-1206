@@ -12,6 +12,7 @@ import Contactos from "@/pages/Contactos";
 import Campanas from "@/pages/Campanas";
 import AgenteIA from "@/pages/AgenteIA";
 import Analiticas from "@/pages/Analiticas";
+import TeamManagement from "@/components/team/TeamManagement";
 import NotFound from "@/pages/NotFound";
 import { Toaster } from "sonner";
 
@@ -47,6 +48,7 @@ function App() {
           <Route path="campanas" element={<Campanas />} />
           <Route path="agente-ia" element={<AgenteIA />} />
           <Route path="analiticas" element={<Analiticas />} />
+          <Route path="equipos" element={<TeamManagement />} />
           <Route path="planes" element={<PlanesCliente />} />
         </Route>
         
