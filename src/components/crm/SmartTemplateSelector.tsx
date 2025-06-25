@@ -7,7 +7,16 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { Badge } from "@/components/ui/badge";
 import { MessageSquare, Search } from "lucide-react";
 import { useTeamManagement } from "@/hooks/useTeamManagement";
-import { SmartTemplate, ExpertiseArea } from "@/types/team";
+import { ExpertiseArea } from "@/types/team";
+
+// Partial template interface for contextual templates
+interface ContextualTemplate {
+  id: string;
+  title: string;
+  content: string;
+  usage_count: number;
+  expertise_area?: ExpertiseArea;
+}
 
 interface SmartTemplateSelectorProps {
   onSelectTemplate: (template: string) => void;
@@ -21,7 +30,7 @@ export const SmartTemplateSelector = ({
   expertiseArea = 'general' 
 }: SmartTemplateSelectorProps) => {
   const { getContextualTemplates } = useTeamManagement();
-  const [templates, setTemplates] = useState<SmartTemplate[]>([]);
+  const [templates, setTemplates] = useState<ContextualTemplate[]>([]);
   const [searchTerm, setSearchTerm] = useState('');
   const [open, setOpen] = useState(false);
 
@@ -41,7 +50,7 @@ export const SmartTemplateSelector = ({
     template.content.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
-  const handleSelectTemplate = (template: SmartTemplate) => {
+  const handleSelectTemplate = (template: ContextualTemplate) => {
     onSelectTemplate(template.content);
     setOpen(false);
     setSearchTerm('');
@@ -76,9 +85,11 @@ export const SmartTemplateSelector = ({
                 >
                   <div className="flex justify-between items-start mb-2">
                     <h4 className="font-medium text-sm">{template.title}</h4>
-                    <Badge variant="outline" className="text-xs">
-                      {template.expertise_area}
-                    </Badge>
+                    {template.expertise_area && (
+                      <Badge variant="outline" className="text-xs">
+                        {template.expertise_area}
+                      </Badge>
+                    )}
                   </div>
                   <p className="text-xs text-muted-foreground line-clamp-2">
                     {template.content}
