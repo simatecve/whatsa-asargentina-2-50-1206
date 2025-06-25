@@ -10,33 +10,30 @@ import { useChatWindowState } from "@/hooks/crm/useChatWindowState";
 import { Conversation, Message } from "@/hooks/useCRMData";
 
 interface ChatWindowProps {
-  conversation: Conversation;
-  messages: Message[];
-  onMessageSent?: (message: string) => void;
-  updateConversationAfterSend?: (conversation: Conversation, message: string) => Promise<void>;
-  onBackToList?: () => void;
-  isAtMessageLimit?: boolean;
-  messageUsage?: {
-    current: number;
-    max: number;
-  };
+  selectedConversation: Conversation | null;
+  loading?: boolean;
   messagesLoading?: boolean;
   hasMoreMessages?: boolean;
-  onLoadMoreMessages?: () => void;
+  onLoadMore?: () => void;
+  onMessageSent?: (message: string) => void;
 }
 
 export const ChatWindow = ({
-  conversation,
-  messages,
-  onMessageSent,
-  updateConversationAfterSend,
-  onBackToList,
-  isAtMessageLimit,
-  messageUsage,
+  selectedConversation,
+  loading = false,
   messagesLoading = false,
   hasMoreMessages = false,
-  onLoadMoreMessages
+  onLoadMore,
+  onMessageSent
 }: ChatWindowProps) => {
+  if (!selectedConversation) {
+    return (
+      <div className="h-full flex items-center justify-center text-muted-foreground">
+        <p>Selecciona una conversación para comenzar</p>
+      </div>
+    );
+  }
+
   const {
     conversationLead,
     loadingLead,
@@ -46,7 +43,7 @@ export const ChatWindow = ({
     scrollToBottom,
     handleCreateLead,
     handleUpdateLeadStatus
-  } = useChatWindowState(conversation, messages);
+  } = useChatWindowState(selectedConversation, []);
 
   const handleMessageSent = useCallback((message: string) => {
     if (onMessageSent) {
@@ -58,21 +55,13 @@ export const ChatWindow = ({
 
   // Función para obtener el nombre a mostrar, priorizando pushname SOLO de mensajes del contacto
   const getDisplayName = () => {
-    // Buscar el pushname más reciente en los mensajes ENTRANTES (del contacto)
-    const messageWithPushname = messages.filter(msg => msg.direccion === 'recibido') // Solo mensajes del contacto
-      .slice().reverse().find(msg => msg.pushname && msg.pushname.trim() && msg.pushname !== 'undefined');
-    
-    if (messageWithPushname?.pushname) {
-      return messageWithPushname.pushname;
-    }
-
     // Si no hay pushname en mensajes del contacto, usar el de la conversación
-    if (conversation.nombre_contacto && conversation.nombre_contacto.trim() && conversation.nombre_contacto !== 'undefined') {
-      return conversation.nombre_contacto;
+    if (selectedConversation.nombre_contacto && selectedConversation.nombre_contacto.trim() && selectedConversation.nombre_contacto !== 'undefined') {
+      return selectedConversation.nombre_contacto;
     }
 
     // Como último recurso, usar el número
-    return conversation.numero_contacto;
+    return selectedConversation.numero_contacto;
   };
 
   const displayName = getDisplayName();
@@ -85,7 +74,6 @@ export const ChatWindow = ({
           <Button 
             variant="ghost" 
             size="icon" 
-            onClick={onBackToList} 
             className="text-white hover:bg-white/10 mr-3 shrink-0"
           >
             <ArrowLeft className="h-5 w-5" />
@@ -95,14 +83,14 @@ export const ChatWindow = ({
               {displayName}
             </h3>
             <p className="text-sm text-white/80 truncate">
-              {conversation.numero_contacto}
+              {selectedConversation.numero_contacto}
             </p>
           </div>
         </div>
         <div className="shrink-0 ml-4">
           <BotToggleButton 
-            numeroContacto={conversation.numero_contacto} 
-            instanciaNombre={conversation.instancia_nombre || ''} 
+            numeroContacto={selectedConversation.numero_contacto} 
+            instanciaNombre={selectedConversation.instancia_nombre || ''} 
           />
         </div>
       </div>
@@ -110,8 +98,8 @@ export const ChatWindow = ({
       {/* Desktop header - hidden on mobile */}
       <div className="hidden md:block shrink-0">
         <ChatHeader 
-          conversation={conversation} 
-          messages={messages} 
+          conversation={selectedConversation} 
+          messages={[]} 
           conversationLead={conversationLead} 
           loadingLead={loadingLead} 
           leadLoading={leadLoading} 
@@ -131,28 +119,23 @@ export const ChatWindow = ({
           </div>
         ) : (
           <ChatMessages 
-            messages={messages} 
+            messages={[]} 
             messagesEndRef={messagesEndRef} 
             scrollAreaRef={scrollAreaRef} 
-            isAtMessageLimit={isAtMessageLimit}
-            messageUsage={messageUsage}
             hasMoreMessages={hasMoreMessages}
-            onLoadMore={onLoadMoreMessages}
+            onLoadMore={onLoadMore}
             loadingMore={messagesLoading}
           />
         )}
       </div>
 
-      {/* Message input - fixed at bottom - BLOQUEADO si está en límite de mensajes */}
-      {!isAtMessageLimit && (
-        <div className="border-t bg-white p-3 md:p-4 shrink-0">
-          <MessageInput 
-            conversation={conversation} 
-            onMessageSent={handleMessageSent} 
-            updateConversationAfterSend={updateConversationAfterSend} 
-          />
-        </div>
-      )}
+      {/* Message input - fixed at bottom */}
+      <div className="border-t bg-white p-3 md:p-4 shrink-0">
+        <MessageInput 
+          selectedConversation={selectedConversation} 
+          onSendMessage={handleMessageSent}
+        />
+      </div>
     </div>
   );
 };

@@ -7,7 +7,7 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { Badge } from "@/components/ui/badge";
 import { MessageSquare, Search } from "lucide-react";
 import { useTeamManagement } from "@/hooks/useTeamManagement";
-import { SmartTemplate } from "@/types/team";
+import { SmartTemplate, ExpertiseArea } from "@/types/team";
 
 interface SmartTemplateSelectorProps {
   onSelectTemplate: (template: string) => void;
@@ -32,21 +32,8 @@ export const SmartTemplateSelector = ({
   }, [open, contextMessage, expertiseArea]);
 
   const loadTemplates = async () => {
-    const contextualTemplates = await getContextualTemplates(contextMessage, expertiseArea);
-    // Map the result to match SmartTemplate interface
-    const mappedTemplates: SmartTemplate[] = contextualTemplates.map(template => ({
-      id: template.id,
-      owner_user_id: '', // This will be populated by the database function
-      title: template.title,
-      content: template.content,
-      context_triggers: [], // This will be populated by the database function
-      expertise_area: 'general', // This will be populated by the database function
-      usage_count: template.usage_count,
-      is_active: true,
-      created_at: new Date().toISOString(),
-      updated_at: new Date().toISOString()
-    }));
-    setTemplates(mappedTemplates);
+    const contextualTemplates = await getContextualTemplates(contextMessage, expertiseArea as ExpertiseArea);
+    setTemplates(contextualTemplates);
   };
 
   const filteredTemplates = templates.filter(template =>

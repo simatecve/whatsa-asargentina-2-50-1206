@@ -40,13 +40,19 @@ export const CRMMainContent = ({
 
       {/* Chat Window */}
       <div className="col-span-12 lg:col-span-5 xl:col-span-6">
-        <ChatWindow
-          selectedConversation={selectedConversation}
-          loading={messagesLoading}
-          hasMoreMessages={hasMoreMessages}
-          onLoadMore={handleLoadMoreMessages}
-          onMessageSent={handleMessageSent}
-        />
+        {selectedConversation ? (
+          <ChatWindow
+            selectedConversation={selectedConversation}
+            loading={messagesLoading}
+            hasMoreMessages={hasMoreMessages}
+            onLoadMore={handleLoadMoreMessages}
+            onMessageSent={handleMessageSent}
+          />
+        ) : (
+          <div className="h-full flex items-center justify-center text-muted-foreground">
+            <p>Selecciona una conversación para comenzar</p>
+          </div>
+        )}
       </div>
 
       {/* Internal Notes Panel */}
