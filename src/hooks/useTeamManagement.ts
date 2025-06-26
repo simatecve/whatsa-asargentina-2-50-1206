@@ -42,7 +42,10 @@ export const useTeamManagement = () => {
         .order('created_at', { ascending: false });
 
       if (error) throw error;
-      setTeamMembers(data || []);
+      
+      // Filter out any records with null team_user
+      const validMembers = data?.filter(member => member.team_user) || [];
+      setTeamMembers(validMembers as TeamMember[]);
     } catch (error) {
       console.error('Error fetching team members:', error);
       toast.error('Error al cargar miembros del equipo');
@@ -133,30 +136,6 @@ export const useTeamManagement = () => {
     }
   };
 
-  // Auto assign conversation
-  const autoAssignConversation = async (conversationId: string, expertiseRequired: ExpertiseArea = 'general') => {
-    try {
-      const { data, error } = await supabase.rpc('auto_assign_conversation', {
-        p_conversation_id: conversationId,
-        p_expertise_required: expertiseRequired
-      });
-
-      if (error) throw error;
-
-      if (data) {
-        toast.success('Conversación asignada automáticamente');
-        return data;
-      } else {
-        toast.info('No hay agentes disponibles en este momento');
-        return null;
-      }
-    } catch (error) {
-      console.error('Error auto-assigning conversation:', error);
-      toast.error('Error al asignar conversación');
-      return null;
-    }
-  };
-
   // Fetch conversation assignments
   const fetchAssignments = async (conversationId?: string) => {
     try {
@@ -177,7 +156,7 @@ export const useTeamManagement = () => {
 
       const formattedAssignments = data?.map(assignment => ({
         ...assignment,
-        assigned_to_name: assignment.assigned_to?.nombre
+        assigned_to_name: assignment.assigned_to?.nombre || ''
       })) || [];
 
       setAssignments(formattedAssignments);
@@ -202,7 +181,7 @@ export const useTeamManagement = () => {
 
       const formattedNotes = data?.map(note => ({
         ...note,
-        author_name: note.author?.nombre
+        author_name: note.author?.nombre || ''
       })) || [];
 
       setInternalNotes(formattedNotes);
@@ -249,26 +228,6 @@ export const useTeamManagement = () => {
       setSmartTemplates(data || []);
     } catch (error) {
       console.error('Error fetching smart templates:', error);
-    }
-  };
-
-  // Get contextual templates
-  const getContextualTemplates = async (messageContent: string = '', expertiseArea: ExpertiseArea = 'general') => {
-    try {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) return [];
-
-      const { data, error } = await supabase.rpc('get_contextual_templates', {
-        p_user_id: user.id,
-        p_message_content: messageContent,
-        p_expertise_area: expertiseArea
-      });
-
-      if (error) throw error;
-      return data || [];
-    } catch (error) {
-      console.error('Error getting contextual templates:', error);
-      return [];
     }
   };
 
@@ -331,7 +290,6 @@ export const useTeamManagement = () => {
     removeTeamMember,
 
     // Assignment management
-    autoAssignConversation,
     fetchAssignments,
 
     // Internal notes
@@ -340,7 +298,6 @@ export const useTeamManagement = () => {
 
     // Smart templates
     fetchSmartTemplates,
-    getContextualTemplates,
     addSmartTemplate
   };
 };

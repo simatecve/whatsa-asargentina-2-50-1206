@@ -7,16 +7,7 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { Badge } from "@/components/ui/badge";
 import { MessageSquare, Search } from "lucide-react";
 import { useTeamManagement } from "@/hooks/useTeamManagement";
-import { ExpertiseArea } from "@/types/team";
-
-// Partial template interface for contextual templates
-interface ContextualTemplate {
-  id: string;
-  title: string;
-  content: string;
-  usage_count: number;
-  expertise_area?: ExpertiseArea;
-}
+import { ExpertiseArea, SmartTemplate } from "@/types/team";
 
 interface SmartTemplateSelectorProps {
   onSelectTemplate: (template: string) => void;
@@ -29,31 +20,59 @@ export const SmartTemplateSelector = ({
   contextMessage = '', 
   expertiseArea = 'general' 
 }: SmartTemplateSelectorProps) => {
-  const { getContextualTemplates } = useTeamManagement();
-  const [templates, setTemplates] = useState<ContextualTemplate[]>([]);
+  const { smartTemplates } = useTeamManagement();
+  const [filteredTemplates, setFilteredTemplates] = useState<SmartTemplate[]>([]);
   const [searchTerm, setSearchTerm] = useState('');
   const [open, setOpen] = useState(false);
 
   useEffect(() => {
     if (open) {
-      loadTemplates();
+      // Filter templates based on context and expertise
+      let filtered = smartTemplates;
+      
+      if (expertiseArea && expertiseArea !== 'general') {
+        filtered = filtered.filter(template => 
+          template.expertise_area === expertiseArea || template.expertise_area === 'general'
+        );
+      }
+
+      if (contextMessage && contextMessage.trim()) {
+        const contextWords = contextMessage.toLowerCase().split(' ');
+        filtered = filtered.filter(template =>
+          template.context_triggers.some(trigger =>
+            contextWords.some(word => word.includes(trigger.toLowerCase()))
+          )
+        );
+      }
+
+      setFilteredTemplates(filtered);
     }
-  }, [open, contextMessage, expertiseArea]);
+  }, [open, smartTemplates, contextMessage, expertiseArea]);
 
-  const loadTemplates = async () => {
-    const contextualTemplates = await getContextualTemplates(contextMessage, expertiseArea as ExpertiseArea);
-    setTemplates(contextualTemplates);
-  };
-
-  const filteredTemplates = templates.filter(template =>
+  const searchFilteredTemplates = filteredTemplates.filter(template =>
     template.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
     template.content.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
-  const handleSelectTemplate = (template: ContextualTemplate) => {
+  const handleSelectTemplate = (template: SmartTemplate) => {
     onSelectTemplate(template.content);
     setOpen(false);
     setSearchTerm('');
+  };
+
+  const getExpertiseLabel = (expertise: ExpertiseArea) => {
+    const labels = {
+      'conexion': 'Conexión',
+      'crm': 'CRM/Mensajería',
+      'leads_kanban': 'Leads Kanban',
+      'contactos': 'Contactos',
+      'campanas': 'Campañas',
+      'agente_ia': 'Agente IA',
+      'analiticas': 'Analíticas',
+      'configuracion': 'Configuración',
+      'general': 'General'
+    };
+    return labels[expertise] || expertise;
   };
 
   return (
@@ -77,7 +96,7 @@ export const SmartTemplateSelector = ({
 
           <ScrollArea className="h-64">
             <div className="space-y-2">
-              {filteredTemplates.map((template) => (
+              {searchFilteredTemplates.map((template) => (
                 <div
                   key={template.id}
                   className="cursor-pointer p-3 rounded-lg border hover:bg-muted/50 transition-colors"
@@ -85,11 +104,9 @@ export const SmartTemplateSelector = ({
                 >
                   <div className="flex justify-between items-start mb-2">
                     <h4 className="font-medium text-sm">{template.title}</h4>
-                    {template.expertise_area && (
-                      <Badge variant="outline" className="text-xs">
-                        {template.expertise_area}
-                      </Badge>
-                    )}
+                    <Badge variant="outline" className="text-xs">
+                      {getExpertiseLabel(template.expertise_area)}
+                    </Badge>
                   </div>
                   <p className="text-xs text-muted-foreground line-clamp-2">
                     {template.content}
@@ -102,7 +119,7 @@ export const SmartTemplateSelector = ({
                 </div>
               ))}
               
-              {filteredTemplates.length === 0 && (
+              {searchFilteredTemplates.length === 0 && (
                 <div className="text-center py-6 text-muted-foreground">
                   <MessageSquare className="h-8 w-8 mx-auto mb-2 opacity-50" />
                   <p className="text-sm">

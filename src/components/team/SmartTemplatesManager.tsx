@@ -13,10 +13,20 @@ import { useTeamManagement } from "@/hooks/useTeamManagement";
 import { ExpertiseArea } from "@/types/team";
 import { toast } from "sonner";
 
-const expertiseAreas: ExpertiseArea[] = ['sales', 'support', 'technical', 'billing', 'general'];
+const EXPERTISE_OPTIONS: { value: ExpertiseArea; label: string }[] = [
+  { value: 'conexion', label: 'Conexión' },
+  { value: 'crm', label: 'CRM/Mensajería' },
+  { value: 'leads_kanban', label: 'Leads Kanban' },
+  { value: 'contactos', label: 'Contactos' },
+  { value: 'campanas', label: 'Campañas' },
+  { value: 'agente_ia', label: 'Agente IA' },
+  { value: 'analiticas', label: 'Analíticas' },
+  { value: 'configuracion', label: 'Configuración' },
+  { value: 'general', label: 'General' },
+];
 
 export const SmartTemplatesManager = () => {
-  const { smartTemplates, addSmartTemplate, fetchSmartTemplates } = useTeamManagement();
+  const { smartTemplates, addSmartTemplate } = useTeamManagement();
   const [showAddTemplate, setShowAddTemplate] = useState(false);
   const [formData, setFormData] = useState({
     title: '',
@@ -52,6 +62,11 @@ export const SmartTemplatesManager = () => {
   const copyTemplate = (content: string) => {
     navigator.clipboard.writeText(content);
     toast.success('Template copiado al portapapeles');
+  };
+
+  const getExpertiseLabel = (expertise: ExpertiseArea) => {
+    const option = EXPERTISE_OPTIONS.find(opt => opt.value === expertise);
+    return option?.label || expertise;
   };
 
   return (
@@ -118,9 +133,9 @@ export const SmartTemplatesManager = () => {
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
-                    {expertiseAreas.map((area) => (
-                      <SelectItem key={area} value={area}>
-                        {area.charAt(0).toUpperCase() + area.slice(1)}
+                    {EXPERTISE_OPTIONS.map((option) => (
+                      <SelectItem key={option.value} value={option.value}>
+                        {option.label}
                       </SelectItem>
                     ))}
                   </SelectContent>
@@ -160,7 +175,7 @@ export const SmartTemplatesManager = () => {
               
               <div className="flex items-center gap-2">
                 <Badge variant="outline">
-                  {template.expertise_area}
+                  {getExpertiseLabel(template.expertise_area)}
                 </Badge>
                 <span className="text-xs text-muted-foreground">
                   Usado {template.usage_count} veces
