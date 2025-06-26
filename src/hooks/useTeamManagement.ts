@@ -48,7 +48,8 @@ export const useTeamManagement = () => {
         member.team_user && 
         typeof member.team_user === 'object' && 
         !('error' in member.team_user) &&
-        member.team_user !== null
+        member.team_user !== null &&
+        'id' in member.team_user
       );
       
       setTeamMembers(validMembers as unknown as TeamMember[]);
