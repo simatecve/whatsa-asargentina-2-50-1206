@@ -43,8 +43,11 @@ export const useTeamManagement = () => {
 
       if (error) throw error;
       
-      // Filter out any records with null team_user
-      const validMembers = data?.filter(member => member.team_user) || [];
+      // Filter out any records with null team_user and properly type the result
+      const validMembers = (data || []).filter(member => 
+        member.team_user && typeof member.team_user === 'object' && !('error' in member.team_user)
+      );
+      
       setTeamMembers(validMembers as TeamMember[]);
     } catch (error) {
       console.error('Error fetching team members:', error);
@@ -154,10 +157,12 @@ export const useTeamManagement = () => {
       const { data, error } = await query;
       if (error) throw error;
 
-      const formattedAssignments = data?.map(assignment => ({
+      const formattedAssignments = (data || []).map(assignment => ({
         ...assignment,
-        assigned_to_name: assignment.assigned_to?.nombre || ''
-      })) || [];
+        assigned_to_name: assignment.assigned_to && typeof assignment.assigned_to === 'object' && 'nombre' in assignment.assigned_to 
+          ? assignment.assigned_to.nombre 
+          : ''
+      }));
 
       setAssignments(formattedAssignments);
     } catch (error) {
@@ -179,10 +184,12 @@ export const useTeamManagement = () => {
 
       if (error) throw error;
 
-      const formattedNotes = data?.map(note => ({
+      const formattedNotes = (data || []).map(note => ({
         ...note,
-        author_name: note.author?.nombre || ''
-      })) || [];
+        author_name: note.author && typeof note.author === 'object' && 'nombre' in note.author 
+          ? note.author.nombre 
+          : ''
+      }));
 
       setInternalNotes(formattedNotes);
     } catch (error) {
