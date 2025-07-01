@@ -46,16 +46,20 @@ export const useTeamManagement = () => {
       // Filter and type the results properly with proper null checking
       const validMembers: TeamMember[] = (data || [])
         .filter((member) => {
-          return member.team_user !== null && 
-                 member.team_user !== undefined &&
-                 typeof member.team_user === 'object' && 
-                 !('error' in member.team_user) &&
-                 'id' in member.team_user;
+          const teamUser = member.team_user;
+          return teamUser !== null && 
+                 teamUser !== undefined &&
+                 typeof teamUser === 'object' && 
+                 !('error' in teamUser) &&
+                 'id' in teamUser;
         })
-        .map((member) => ({
-          ...member,
-          team_user: member.team_user as TeamUser
-        }));
+        .map((member) => {
+          const teamUser = member.team_user;
+          return {
+            ...member,
+            team_user: teamUser as TeamUser
+          };
+        });
       
       setTeamMembers(validMembers);
     } catch (error) {
@@ -169,8 +173,7 @@ export const useTeamManagement = () => {
       const formattedAssignments = (data || []).map(assignment => {
         let assigned_to_name = '';
         const assignedTo = assignment.assigned_to;
-        if (assignedTo !== null && 
-            assignedTo !== undefined &&
+        if (assignedTo && 
             typeof assignedTo === 'object' && 
             'nombre' in assignedTo) {
           assigned_to_name = (assignedTo as any).nombre;
@@ -205,8 +208,7 @@ export const useTeamManagement = () => {
       const formattedNotes = (data || []).map(note => {
         let author_name = '';
         const author = note.author;
-        if (author !== null && 
-            author !== undefined &&
+        if (author && 
             typeof author === 'object' && 
             'nombre' in author) {
           author_name = (author as any).nombre;
