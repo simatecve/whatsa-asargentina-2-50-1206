@@ -50,14 +50,15 @@ export const useTeamManagement = () => {
           return teamUser !== null && 
                  teamUser !== undefined &&
                  typeof teamUser === 'object' && 
+                 !Array.isArray(teamUser) &&
                  !('error' in teamUser) &&
                  'id' in teamUser;
         })
         .map((member) => {
-          const teamUser = member.team_user;
+          // At this point, we know team_user is valid due to filtering
           return {
             ...member,
-            team_user: teamUser as TeamUser
+            team_user: member.team_user as TeamUser
           };
         });
       
@@ -175,8 +176,9 @@ export const useTeamManagement = () => {
         const assignedTo = assignment.assigned_to;
         if (assignedTo && 
             typeof assignedTo === 'object' && 
+            !Array.isArray(assignedTo) &&
             'nombre' in assignedTo) {
-          assigned_to_name = (assignedTo as any).nombre;
+          assigned_to_name = (assignedTo as { nombre: string }).nombre;
         }
         
         return {
@@ -210,8 +212,9 @@ export const useTeamManagement = () => {
         const author = note.author;
         if (author && 
             typeof author === 'object' && 
+            !Array.isArray(author) &&
             'nombre' in author) {
-          author_name = (author as any).nombre;
+          author_name = (author as { nombre: string }).nombre;
         }
         
         return {
