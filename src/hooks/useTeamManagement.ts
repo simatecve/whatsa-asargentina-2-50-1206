@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { TeamMember, ConversationAssignment, InternalNote, SmartTemplate, ExpertiseArea, TeamUser, TeamRole } from "@/types/team";
@@ -58,7 +57,7 @@ export const useTeamManagement = () => {
           // At this point, we know team_user is valid due to filtering
           return {
             ...member,
-            team_user: member.team_user as TeamUser
+            team_user: (member.team_user as unknown) as TeamUser
           };
         });
       
