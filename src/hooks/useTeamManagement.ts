@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { TeamMember, ConversationAssignment, InternalNote, SmartTemplate, ExpertiseArea, TeamUser, TeamRole } from "@/types/team";
@@ -44,15 +43,21 @@ export const useTeamManagement = () => {
       if (error) throw error;
       
       // Filter out any records with null team_user and properly type the result
-      const validMembers = (data || []).filter(member => 
-        member.team_user && 
+      const validMembers = (data || []).filter(member => {
+        return member.team_user && 
         typeof member.team_user === 'object' && 
         !('error' in member.team_user) &&
         member.team_user !== null &&
-        'id' in member.team_user
-      );
+        'id' in member.team_user;
+      });
       
-      setTeamMembers(validMembers as unknown as TeamMember[]);
+      // Additional type safety: explicitly check team_user before conversion
+      const typedMembers = validMembers.map(member => ({
+        ...member,
+        team_user: member.team_user as TeamUser
+      }));
+      
+      setTeamMembers(typedMembers as TeamMember[]);
     } catch (error) {
       console.error('Error fetching team members:', error);
       toast.error('Error al cargar miembros del equipo');
@@ -161,15 +166,20 @@ export const useTeamManagement = () => {
       const { data, error } = await query;
       if (error) throw error;
 
-      const formattedAssignments = (data || []).map(assignment => ({
-        ...assignment,
-        assigned_to_name: assignment.assigned_to && 
-          typeof assignment.assigned_to === 'object' && 
-          assignment.assigned_to !== null &&
-          'nombre' in assignment.assigned_to 
-          ? (assignment.assigned_to as any).nombre 
-          : ''
-      }));
+      const formattedAssignments = (data || []).map(assignment => {
+        let assigned_to_name = '';
+        if (assignment.assigned_to && 
+            typeof assignment.assigned_to === 'object' && 
+            assignment.assigned_to !== null &&
+            'nombre' in assignment.assigned_to) {
+          assigned_to_name = (assignment.assigned_to as any).nombre;
+        }
+        
+        return {
+          ...assignment,
+          assigned_to_name
+        };
+      });
 
       setAssignments(formattedAssignments);
     } catch (error) {
@@ -191,15 +201,20 @@ export const useTeamManagement = () => {
 
       if (error) throw error;
 
-      const formattedNotes = (data || []).map(note => ({
-        ...note,
-        author_name: note.author && 
-          typeof note.author === 'object' && 
-          note.author !== null &&
-          'nombre' in note.author 
-          ? (note.author as any).nombre 
-          : ''
-      }));
+      const formattedNotes = (data || []).map(note => {
+        let author_name = '';
+        if (note.author && 
+            typeof note.author === 'object' && 
+            note.author !== null &&
+            'nombre' in note.author) {
+          author_name = (note.author as any).nombre;
+        }
+        
+        return {
+          ...note,
+          author_name
+        };
+      });
 
       setInternalNotes(formattedNotes);
     } catch (error) {
