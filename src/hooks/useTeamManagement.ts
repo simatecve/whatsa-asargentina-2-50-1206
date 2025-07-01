@@ -42,22 +42,20 @@ export const useTeamManagement = () => {
 
       if (error) throw error;
       
-      // Filter and type the results properly
-      const validMembers = (data || []).filter(member => {
-        return member.team_user && 
-        typeof member.team_user === 'object' && 
-        !('error' in member.team_user) &&
-        member.team_user !== null &&
-        'id' in member.team_user;
+      // Filter and type the results properly with explicit null checks
+      const validMembers = (data || []).filter((member): member is typeof member & { team_user: TeamUser } => {
+        return member.team_user !== null && 
+               member.team_user !== undefined &&
+               typeof member.team_user === 'object' && 
+               !('error' in member.team_user) &&
+               'id' in member.team_user;
       });
       
-      // Map to properly typed members
-      const typedMembers: TeamMember[] = validMembers.map(member => {
-        return {
-          ...member,
-          team_user: member.team_user as TeamUser
-        };
-      });
+      // Now validMembers is properly typed with team_user guaranteed to be TeamUser
+      const typedMembers: TeamMember[] = validMembers.map(member => ({
+        ...member,
+        team_user: member.team_user
+      }));
       
       setTeamMembers(typedMembers);
     } catch (error) {
@@ -170,9 +168,9 @@ export const useTeamManagement = () => {
 
       const formattedAssignments = (data || []).map(assignment => {
         let assigned_to_name = '';
-        if (assignment.assigned_to && 
+        if (assignment.assigned_to !== null && 
+            assignment.assigned_to !== undefined &&
             typeof assignment.assigned_to === 'object' && 
-            assignment.assigned_to !== null &&
             'nombre' in assignment.assigned_to) {
           assigned_to_name = (assignment.assigned_to as any).nombre;
         }
@@ -205,9 +203,9 @@ export const useTeamManagement = () => {
 
       const formattedNotes = (data || []).map(note => {
         let author_name = '';
-        if (note.author && 
+        if (note.author !== null && 
+            note.author !== undefined &&
             typeof note.author === 'object' && 
-            note.author !== null &&
             'nombre' in note.author) {
           author_name = (note.author as any).nombre;
         }
