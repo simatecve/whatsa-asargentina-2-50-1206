@@ -42,31 +42,24 @@ export const useTeamManagement = () => {
 
       if (error) throw error;
       
-      // Filter out any records with null team_user and properly type the result
+      // Filter and type the results properly
       const validMembers = (data || []).filter(member => {
         return member.team_user && 
         typeof member.team_user === 'object' && 
         !('error' in member.team_user) &&
         member.team_user !== null &&
-        member.team_user &&
-        typeof member.team_user === 'object' &&
         'id' in member.team_user;
       });
       
-      // Additional type safety: explicitly check team_user before conversion
-      const typedMembers = validMembers.map(member => {
-        // At this point we know team_user exists and is valid due to filtering above
-        if (member.team_user && typeof member.team_user === 'object' && 'id' in member.team_user) {
-          return {
-            ...member,
-            team_user: member.team_user as TeamUser
-          };
-        }
-        // This should never happen due to filtering, but TypeScript needs it
-        return member;
-      }).filter(member => member.team_user && 'id' in member.team_user);
+      // Map to properly typed members
+      const typedMembers: TeamMember[] = validMembers.map(member => {
+        return {
+          ...member,
+          team_user: member.team_user as TeamUser
+        };
+      });
       
-      setTeamMembers(typedMembers as TeamMember[]);
+      setTeamMembers(typedMembers);
     } catch (error) {
       console.error('Error fetching team members:', error);
       toast.error('Error al cargar miembros del equipo');
@@ -180,7 +173,6 @@ export const useTeamManagement = () => {
         if (assignment.assigned_to && 
             typeof assignment.assigned_to === 'object' && 
             assignment.assigned_to !== null &&
-            assignment.assigned_to &&
             'nombre' in assignment.assigned_to) {
           assigned_to_name = (assignment.assigned_to as any).nombre;
         }
@@ -216,7 +208,6 @@ export const useTeamManagement = () => {
         if (note.author && 
             typeof note.author === 'object' && 
             note.author !== null &&
-            note.author &&
             'nombre' in note.author) {
           author_name = (note.author as any).nombre;
         }
