@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -15,6 +14,7 @@ import { useSubscriptionValidation } from "@/hooks/useSubscriptionValidation";
 const Campanas = () => {
   const [showForm, setShowForm] = useState(false);
   const [searchTerm, setSearchTerm] = useState("");
+  const [activeTab, setActiveTab] = useState("campanas");
   const { campanas, loading, fetchCampanas } = useCampanasData("todas");
   const { suscripcionActiva, limits } = useSubscriptionValidation();
 
@@ -24,11 +24,12 @@ const Campanas = () => {
 
   const handleCampanaCreated = () => {
     setShowForm(false);
+    setActiveTab("campanas");
     fetchCampanas();
   };
 
   const handleCreateNew = () => {
-    setShowForm(true);
+    setActiveTab("crear");
   };
 
   return (
@@ -80,7 +81,7 @@ const Campanas = () => {
         </div>
 
         {/* Tabs modernos */}
-        <Tabs defaultValue="campanas" className="w-full">
+        <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
           <div className="flex flex-col sm:flex-row gap-4 sm:gap-0 sm:items-center sm:justify-between mb-6">
             <TabsList className="grid w-full sm:w-auto grid-cols-2 bg-white/60 backdrop-blur-sm rounded-xl border border-slate-200/60 shadow-lg">
               <TabsTrigger 
@@ -155,7 +156,7 @@ const Campanas = () => {
               <CardContent>
                 <CampanaForm 
                   onSuccess={handleCampanaCreated} 
-                  onCancel={() => setShowForm(false)}
+                  onCancel={() => setActiveTab("campanas")}
                 />
               </CardContent>
             </Card>

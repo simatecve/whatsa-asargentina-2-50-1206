@@ -1,18 +1,81 @@
-
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import KanbanBoard from "@/components/leads/KanbanBoard";
 import { Kanban, Sparkles, TrendingUp, Target } from "lucide-react";
 import { useSubscriptionValidation } from "@/hooks/useSubscriptionValidation";
+import { useEffect, useState } from "react";
+import { supabase } from "@/integrations/supabase/client";
+import { Lead } from "@/types/lead";
 
 const LeadsKanban = () => {
   const { suscripcionActiva } = useSubscriptionValidation();
+  const [leads, setLeads] = useState<Lead[]>([]);
+  const [loading, setLoading] = useState(true);
 
-  // Mock data for the kanban board - in real app this would come from hooks/API
-  const mockLeads = [];
+  // Obtener leads del usuario
+  const fetchLeads = async () => {
+    try {
+      setLoading(true);
+      const { data: userData } = await supabase.auth.getUser();
+      
+      if (!userData.user) {
+        setLeads([]);
+        return;
+      }
+
+      // Obtener leads de las instancias del usuario
+      const { data: leadsData, error } = await supabase
+        .from("leads")
+        .select("*")
+        .in("instancia", 
+          supabase
+            .from("instancias")
+            .select("nombre")
+            .eq("user_id", userData.user.id)
+        )
+        .order("created_at", { ascending: false });
+
+      if (error) {
+        console.error("Error fetching leads:", error);
+        setLeads([]);
+      } else {
+        setLeads(leadsData || []);
+      }
+    } catch (error) {
+      console.error("Error fetching leads:", error);
+      setLeads([]);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchLeads();
+  }, []);
+
   const handleUpdateStatus = async (leadId: number, newStatus: string) => {
-    // Mock implementation - in real app this would update the lead status
-    console.log(`Updating lead ${leadId} to status ${newStatus}`);
-    return true;
+    try {
+      const { error } = await supabase
+        .from("leads")
+        .update({ status: newStatus })
+        .eq("id", leadId);
+
+      if (error) {
+        console.error("Error updating lead status:", error);
+        return false;
+      }
+
+      // Actualizar el estado local
+      setLeads(prevLeads => 
+        prevLeads.map(lead => 
+          lead.id === leadId ? { ...lead, status: newStatus } : lead
+        )
+      );
+
+      return true;
+    } catch (error) {
+      console.error("Error updating lead status:", error);
+      return false;
+    }
   };
 
   return (
@@ -72,10 +135,19 @@ const LeadsKanban = () => {
             </CardTitle>
           </CardHeader>
           <CardContent className="p-0">
-            <KanbanBoard 
-              leads={mockLeads}
-              onUpdateStatus={handleUpdateStatus}
-            />
+            {loading ? (
+              <div className="h-96 flex items-center justify-center">
+                <div className="text-center">
+                  <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto mb-2"></div>
+                  <p className="text-gray-500">Cargando leads...</p>
+                </div>
+              </div>
+            ) : (
+              <KanbanBoard 
+                leads={leads}
+                onUpdateStatus={handleUpdateStatus}
+              />
+            )}
           </CardContent>
         </Card>
       </div>

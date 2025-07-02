@@ -1,6 +1,8 @@
 
 import { useState, useEffect } from "react";
 import { Card, CardContent } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Plus } from "lucide-react";
 import { 
   Dialog, 
   DialogContent, 
@@ -24,13 +26,14 @@ export const ContactLists = ({ onCreateNew }: ContactListsProps) => {
   const [selectedList, setSelectedList] = useState<ContactList | null>(null);
   const [editDialogOpen, setEditDialogOpen] = useState(false);
   const [viewContactsDialogOpen, setViewContactsDialogOpen] = useState(false);
+  const [createDialogOpen, setCreateDialogOpen] = useState(false);
   
   // When dialog is closed, refresh the list
   useEffect(() => {
-    if (!editDialogOpen && !viewContactsDialogOpen) {
+    if (!editDialogOpen && !viewContactsDialogOpen && !createDialogOpen) {
       fetchLists();
     }
-  }, [editDialogOpen, viewContactsDialogOpen, fetchLists]);
+  }, [editDialogOpen, viewContactsDialogOpen, createDialogOpen, fetchLists]);
   
   const handleEdit = (list: ContactList) => {
     setSelectedList(list);
@@ -42,6 +45,11 @@ export const ContactLists = ({ onCreateNew }: ContactListsProps) => {
     setViewContactsDialogOpen(true);
   };
   
+  const handleCreateNew = () => {
+    setSelectedList(null);
+    setCreateDialogOpen(true);
+  };
+  
   const handleCloseContactsDialog = () => {
     setViewContactsDialogOpen(false);
     setSelectedList(null);
@@ -51,9 +59,25 @@ export const ContactLists = ({ onCreateNew }: ContactListsProps) => {
     setEditDialogOpen(false);
     setSelectedList(null);
   };
+
+  const handleCloseCreateDialog = () => {
+    setCreateDialogOpen(false);
+    setSelectedList(null);
+  };
   
   return (
-    <div className="space-y-4">      
+    <div className="space-y-4">
+      {/* Botón para crear nueva lista */}
+      <div className="flex justify-end">
+        <Button
+          onClick={handleCreateNew}
+          className="bg-gradient-to-r from-green-500 to-emerald-500 hover:from-green-600 hover:to-emerald-600 text-white shadow-lg rounded-xl border-0 transition-all duration-200 hover:shadow-xl hover:scale-105"
+        >
+          <Plus className="mr-2 h-4 w-4" />
+          Nueva Lista
+        </Button>
+      </div>
+      
       {loading ? (
         <ContactListsLoading />
       ) : lists.length > 0 ? (
@@ -64,19 +88,29 @@ export const ContactLists = ({ onCreateNew }: ContactListsProps) => {
           onViewContacts={handleViewContacts} 
         />
       ) : (
-        <ContactListsEmptyState onCreateNew={onCreateNew} />
+        <ContactListsEmptyState onCreateNew={handleCreateNew} />
       )}
       
       <Dialog open={editDialogOpen} onOpenChange={handleCloseEditDialog}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>
-              {selectedList ? "Editar Lista de Contactos" : "Nueva Lista de Contactos"}
-            </DialogTitle>
+            <DialogTitle>Editar Lista de Contactos</DialogTitle>
           </DialogHeader>
           <ContactListForm 
             list={selectedList} 
             onClose={handleCloseEditDialog} 
+          />
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={createDialogOpen} onOpenChange={handleCloseCreateDialog}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Nueva Lista de Contactos</DialogTitle>
+          </DialogHeader>
+          <ContactListForm 
+            list={null} 
+            onClose={handleCloseCreateDialog} 
           />
         </DialogContent>
       </Dialog>
