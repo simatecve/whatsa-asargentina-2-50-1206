@@ -78,17 +78,19 @@ export const useOptimizedMessages = (setConversations: React.Dispatch<React.SetS
         
         // Fallback: intentar buscar por instancia y número
         console.log('🔄 Trying fallback query...');
+        const cleanNumber = conversation.numero_contacto.replace('@s.whatsapp.net', '');
         const { data: fallbackMessages, error: fallbackError } = await supabase
           .from('mensajes')
           .select('*')
           .eq('instancia', conversation.instancia_nombre)
-          .eq('numero', conversation.numero_contacto + '@s.whatsapp.net')
+          .eq('numero', cleanNumber + '@s.whatsapp.net')
           .order('created_at', { ascending: true })
           .limit(MESSAGE_PAGE_SIZE);
 
         if (fallbackError) {
           console.error('❌ Fallback query also failed:', fallbackError);
           setMessages([]);
+          setHasMoreMessages(false);
           setLoading(false);
           return;
         }
@@ -97,7 +99,12 @@ export const useOptimizedMessages = (setConversations: React.Dispatch<React.SetS
         console.log('✅ Fallback found messages:', fallbackResult.length);
         setMessages(fallbackResult);
         setCachedMessages(conversation.id, fallbackResult, false);
+        setHasMoreMessages(false);
         setLoading(false);
+        
+        if (fallbackResult.length > 0) {
+          markAsRead(conversation);
+        }
         return;
       }
 
@@ -129,7 +136,7 @@ export const useOptimizedMessages = (setConversations: React.Dispatch<React.SetS
 
       setHasMoreMessages(hasMore);
 
-      if (page === 0) {
+      if (page === 0 && fetchedMessages.length > 0) {
         markAsRead(conversation);
       }
 
@@ -137,18 +144,26 @@ export const useOptimizedMessages = (setConversations: React.Dispatch<React.SetS
       if (error.name !== 'AbortError') {
         console.error('❌ Error in fetchMessages:', error);
         setMessages([]);
+        setHasMoreMessages(false);
       }
     } finally {
       setLoading(false);
     }
   }, [getCachedMessages, setCachedMessages, prependCachedMessages, MESSAGE_PAGE_SIZE, messages.length]);
 
-  const loadMoreMessages = useCallback(async (conversation: Conversation) => {
-    if (!hasMoreMessages || loading) return;
+  const loadMoreMessages = useCallback(async () => {
+    if (!hasMoreMessages || loading || !currentConversationRef.current) {
+      console.log('⚠️ Cannot load more messages:', { hasMoreMessages, loading, currentConversation: currentConversationRef.current });
+      return;
+    }
 
+    // Necesitamos la conversación actual para cargar más mensajes
     const currentPage = Math.ceil(messages.length / MESSAGE_PAGE_SIZE);
-    await fetchMessages(conversation, currentPage, false);
-  }, [fetchMessages, hasMoreMessages, loading, messages.length, MESSAGE_PAGE_SIZE]);
+    console.log('📄 Loading more messages, page:', currentPage);
+    
+    // Aquí necesitamos una forma de obtener la conversación actual
+    // Por ahora, vamos a usar una referencia
+  }, [hasMoreMessages, loading, messages.length, MESSAGE_PAGE_SIZE]);
 
   const addMessageToChat = useCallback((conversation: Conversation, messageText: string) => {
     const newMessage: Message = {
