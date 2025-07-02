@@ -304,6 +304,61 @@ export const connectInstance = async (instanceName: string): Promise<string | nu
   }
 };
 
+export const setupInstanceWebhook = async (instanceName: string): Promise<void> => {
+  const config = await fetchAPIConfig();
+  
+  if (!config) {
+    toast.error("No se encontró la configuración de la API.");
+    throw new Error("No se encontró la configuración de la API");
+  }
+  
+  const { server_url, api_key } = config;
+  const baseUrl = server_url.endsWith('/') ? server_url.slice(0, -1) : server_url;
+  const fullUrl = `${baseUrl}/webhook/set/${instanceName}`;
+  
+  try {
+    const webhookData = {
+      url: DEFAULT_WEBHOOK_URL,
+      byEvents: false,
+      base64: true,
+      headers: {
+        "Content-Type": "application/json"
+      },
+      events: [
+        "MESSAGES_UPSERT"
+      ]
+    };
+
+    const response = await fetch(fullUrl, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'apikey': api_key
+      },
+      body: JSON.stringify(webhookData)
+    });
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      console.error("Setup Webhook API Error:", errorText);
+      throw new Error(`Error al configurar el webhook: ${response.status} ${response.statusText}`);
+    }
+
+    const data = await response.json();
+    console.log("Setup webhook response:", data);
+    
+    // Update the instance record with webhook info
+    await supabase
+      .from("instancias")
+      .update({ webhook: DEFAULT_WEBHOOK_URL })
+      .eq("nombre", instanceName);
+      
+  } catch (error) {
+    console.error("Error setting up webhook:", error);
+    throw error;
+  }
+};
+
 export const updateInstanceConnectionStatus = async (instanceName: string, isConnected: boolean) => {
   try {
     const { data: instanceData, error } = await supabase
