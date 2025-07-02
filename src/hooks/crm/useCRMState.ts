@@ -157,8 +157,9 @@ export const useCRMState = () => {
   }, [selectedConversation, crmHandleMessageSent, updateConversationAfterSend]);
 
   const handleLoadMoreMessages = useCallback(() => {
+    // Corregir: loadMoreMessages no necesita argumentos
     if (selectedConversation && loadMoreMessages) {
-      loadMoreMessages(selectedConversation);
+      loadMoreMessages();
     }
   }, [selectedConversation, loadMoreMessages]);
 
