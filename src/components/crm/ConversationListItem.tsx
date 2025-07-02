@@ -1,7 +1,7 @@
 
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { cn } from "@/lib/utils";
-import { Conversation } from "@/types/crm";
+import { Conversation, Message } from "@/types/crm";
 import { formatDistanceToNow } from "date-fns";
 import { es } from "date-fns/locale";
 
@@ -9,12 +9,14 @@ interface ConversationListItemProps {
   conversation: Conversation;
   isSelected: boolean;
   onClick: () => void;
+  messages?: Message[];
 }
 
 export const ConversationListItem = ({ 
   conversation, 
   isSelected, 
-  onClick 
+  onClick,
+  messages = []
 }: ConversationListItemProps) => {
   console.log('📋 ConversationListItem render:', {
     id: conversation.id,
