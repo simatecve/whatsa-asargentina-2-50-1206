@@ -11,7 +11,16 @@ import { useSubscriptionValidation } from "@/hooks/useSubscriptionValidation";
 
 const Contactos = () => {
   const [searchTerm, setSearchTerm] = useState("");
+  const [showCreateModal, setShowCreateModal] = useState(false);
   const { suscripcionActiva, limits } = useSubscriptionValidation();
+
+  const handleCreateNew = () => {
+    setShowCreateModal(true);
+  };
+
+  const handleImportComplete = () => {
+    // Refresh contacts or show success message
+  };
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50/30 to-indigo-50/20 dark:from-slate-900 dark:via-slate-800 dark:to-slate-900">
@@ -103,7 +112,7 @@ const Contactos = () => {
                 </CardTitle>
               </CardHeader>
               <CardContent>
-                <ContactLists searchTerm={searchTerm} />
+                <ContactLists onCreateNew={handleCreateNew} />
               </CardContent>
             </Card>
           </TabsContent>
@@ -119,7 +128,10 @@ const Contactos = () => {
                 </CardTitle>
               </CardHeader>
               <CardContent>
-                <ContactImport />
+                <ContactImport 
+                  listId="default-list-id"
+                  onImportComplete={handleImportComplete}
+                />
               </CardContent>
             </Card>
           </TabsContent>

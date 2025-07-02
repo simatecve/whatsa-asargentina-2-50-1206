@@ -9,13 +9,13 @@ import { CampanaForm } from "@/components/campanas/CampanaForm";
 import { CampanasList } from "@/components/campanas/CampanasList";
 import { CampanasEmptyState } from "@/components/campanas/CampanasEmptyState";
 import { CampanasLoading } from "@/components/campanas/CampanasLoading";
-import { useCampanas } from "@/hooks/useCampanas";
+import { useCampanasData } from "@/hooks/useCampanasData";
 import { useSubscriptionValidation } from "@/hooks/useSubscriptionValidation";
 
 const Campanas = () => {
   const [showForm, setShowForm] = useState(false);
   const [searchTerm, setSearchTerm] = useState("");
-  const { campanas, loading, error, refetch } = useCampanas();
+  const { campanas, loading, error, refetch } = useCampanasData("todas");
   const { suscripcionActiva, limits } = useSubscriptionValidation();
 
   const filteredCampanas = campanas.filter(campana =>
@@ -25,6 +25,10 @@ const Campanas = () => {
   const handleCampanaCreated = () => {
     setShowForm(false);
     refetch();
+  };
+
+  const handleCreateNew = () => {
+    setShowForm(true);
   };
 
   return (
@@ -104,7 +108,7 @@ const Campanas = () => {
                 />
               </div>
               <Button
-                onClick={() => setShowForm(true)}
+                onClick={handleCreateNew}
                 className="bg-gradient-to-r from-green-500 to-emerald-500 hover:from-green-600 hover:to-emerald-600 text-white shadow-lg rounded-xl border-0 transition-all duration-200 hover:shadow-xl hover:scale-105"
               >
                 <Plus className="mr-2 h-4 w-4" />
@@ -131,11 +135,11 @@ const Campanas = () => {
                     Error al cargar las campañas: {error}
                   </div>
                 ) : filteredCampanas.length === 0 ? (
-                  <CampanasEmptyState />
+                  <CampanasEmptyState estado="todas" onCreateNew={handleCreateNew} />
                 ) : (
                   <CampanasList 
-                    campanas={filteredCampanas} 
-                    onRefetch={refetch}
+                    estado="todas"
+                    onCreateNew={handleCreateNew}
                   />
                 )}
               </CardContent>
@@ -153,7 +157,10 @@ const Campanas = () => {
                 </CardTitle>
               </CardHeader>
               <CardContent>
-                <CampanaForm onSuccess={handleCampanaCreated} />
+                <CampanaForm 
+                  onSuccess={handleCampanaCreated} 
+                  onCancel={() => setShowForm(false)}
+                />
               </CardContent>
             </Card>
           </TabsContent>

@@ -1,8 +1,8 @@
 
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { PerfilUsuario } from "@/components/configuracion/PerfilUsuario";
-import { Settings, User, Sparkles, Shield, Gear } from "lucide-react";
+import PerfilUsuario from "@/components/configuracion/PerfilUsuario";
+import { Settings, User, Sparkles, Shield, Cog } from "lucide-react";
 import { useSubscriptionValidation } from "@/hooks/useSubscriptionValidation";
 
 const Configuracion = () => {
@@ -47,7 +47,7 @@ const Configuracion = () => {
             
             <div className="hidden lg:block">
               <div className="p-4 bg-white/10 rounded-xl backdrop-blur-sm border border-white/20">
-                <Gear className="h-12 w-12 text-white mb-2" />
+                <Cog className="h-12 w-12 text-white mb-2" />
                 <p className="text-white/90 text-sm font-medium">Config</p>
               </div>
             </div>

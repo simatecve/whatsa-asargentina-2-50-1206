@@ -3,9 +3,18 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { AgenteIAViewContainer } from "@/components/agente-ia/AgenteIAViewContainer";
 import { Bot, Sparkles, TrendingUp, Zap } from "lucide-react";
 import { useSubscriptionValidation } from "@/hooks/useSubscriptionValidation";
+import { useAgenteIAView } from "@/hooks/useAgenteIAView";
 
 const AgenteIA = () => {
   const { suscripcionActiva, limits } = useSubscriptionValidation();
+  const {
+    currentView,
+    editingConfig,
+    handleCreateNew,
+    handleEdit,
+    handleBack,
+    handleSave
+  } = useAgenteIAView();
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50/30 to-indigo-50/20 dark:from-slate-900 dark:via-slate-800 dark:to-slate-900">
@@ -64,7 +73,14 @@ const AgenteIA = () => {
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <AgenteIAViewContainer />
+            <AgenteIAViewContainer 
+              currentView={currentView}
+              editingConfig={editingConfig}
+              onCreateNew={handleCreateNew}
+              onEdit={handleEdit}
+              onBack={handleBack}
+              onSave={handleSave}
+            />
           </CardContent>
         </Card>
       </div>

@@ -1,7 +1,7 @@
 
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { AnalisisIndividual } from "@/components/analytics/AnalisisIndividual";
+import AnalisisIndividual from "@/components/analytics/AnalisisIndividual";
 import { BarChart, TrendingUp, Sparkles, Target, Activity } from "lucide-react";
 import { useSubscriptionValidation } from "@/hooks/useSubscriptionValidation";
 

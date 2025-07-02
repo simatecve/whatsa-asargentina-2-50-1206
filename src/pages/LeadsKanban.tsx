@@ -1,11 +1,19 @@
 
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { KanbanBoard } from "@/components/leads/KanbanBoard";
+import KanbanBoard from "@/components/leads/KanbanBoard";
 import { Kanban, Sparkles, TrendingUp, Target } from "lucide-react";
 import { useSubscriptionValidation } from "@/hooks/useSubscriptionValidation";
 
 const LeadsKanban = () => {
   const { suscripcionActiva } = useSubscriptionValidation();
+
+  // Mock data for the kanban board - in real app this would come from hooks/API
+  const mockLeads = [];
+  const handleUpdateStatus = async (leadId: number, newStatus: string) => {
+    // Mock implementation - in real app this would update the lead status
+    console.log(`Updating lead ${leadId} to status ${newStatus}`);
+    return true;
+  };
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50/30 to-indigo-50/20 dark:from-slate-900 dark:via-slate-800 dark:to-slate-900">
@@ -64,7 +72,10 @@ const LeadsKanban = () => {
             </CardTitle>
           </CardHeader>
           <CardContent className="p-0">
-            <KanbanBoard />
+            <KanbanBoard 
+              leads={mockLeads}
+              onUpdateStatus={handleUpdateStatus}
+            />
           </CardContent>
         </Card>
       </div>
