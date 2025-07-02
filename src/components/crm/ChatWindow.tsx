@@ -78,20 +78,20 @@ export const ChatWindow = ({
   const displayName = getDisplayName();
 
   return (
-    <div className="flex flex-col h-full overflow-hidden">
+    <div className="flex flex-col h-full overflow-hidden bg-white dark:bg-gray-800">
       {/* Mobile header - contact info and back button only */}
-      <div className="md:hidden fixed top-0 left-0 right-0 z-50 flex items-center justify-between p-4" style={{ backgroundColor: '#152763' }}>
+      <div className="md:hidden fixed top-0 left-0 right-0 z-50 flex items-center justify-between p-4 bg-gradient-to-r from-blue-600 to-blue-700 shadow-lg">
         <div className="flex items-center flex-1">
           <Button 
             variant="ghost" 
             size="icon" 
             onClick={onBackToList} 
-            className="text-white hover:bg-white/10 mr-3 shrink-0"
+            className="text-white hover:bg-white/10 mr-3 shrink-0 rounded-full"
           >
             <ArrowLeft className="h-5 w-5" />
           </Button>
           <div className="flex-1 min-w-0">
-            <h3 className="font-medium text-white text-base mb-1 truncate">
+            <h3 className="font-semibold text-white text-base mb-1 truncate">
               {displayName}
             </h3>
             <p className="text-sm text-white/80 truncate">
@@ -108,7 +108,7 @@ export const ChatWindow = ({
       </div>
 
       {/* Desktop header - hidden on mobile */}
-      <div className="hidden md:block shrink-0">
+      <div className="hidden md:block shrink-0 bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700">
         <ChatHeader 
           conversation={conversation} 
           messages={messages} 
@@ -121,12 +121,12 @@ export const ChatWindow = ({
       </div>
 
       {/* Messages area - this should take the remaining space */}
-      <div className="flex-1 min-h-0 pt-20 md:pt-0 overflow-hidden py-[6px]">
+      <div className="flex-1 min-h-0 pt-20 md:pt-0 overflow-hidden bg-gray-50 dark:bg-gray-900">
         {messagesLoading ? (
           <div className="h-full flex items-center justify-center">
             <div className="text-center">
-              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-green-600 mx-auto mb-4"></div>
-              <p className="text-muted-foreground">Cargando mensajes...</p>
+              <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-green-600 mx-auto mb-4"></div>
+              <p className="text-muted-foreground font-medium">Cargando mensajes...</p>
             </div>
           </div>
         ) : (
@@ -145,7 +145,7 @@ export const ChatWindow = ({
 
       {/* Message input - fixed at bottom - BLOQUEADO si está en límite de mensajes */}
       {!isAtMessageLimit && (
-        <div className="border-t bg-white p-3 md:p-4 shrink-0">
+        <div className="shrink-0">
           <MessageInput 
             conversation={conversation} 
             onMessageSent={handleMessageSent} 

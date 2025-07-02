@@ -67,24 +67,31 @@ export const ConversationList = ({
   }
 
   return (
-    <div className="flex flex-col h-full">
-      <ConversationSearch 
-        searchTerm={searchTerm}
-        onSearchChange={setSearchTerm}
-      />
+    <div className="flex flex-col h-full bg-white dark:bg-gray-800 border-r border-gray-200 dark:border-gray-700">
+      <div className="p-4 border-b border-gray-200 dark:border-gray-700 bg-gradient-to-r from-gray-50 to-white dark:from-gray-800 dark:to-gray-700">
+        <ConversationSearch 
+          searchTerm={searchTerm}
+          onSearchChange={setSearchTerm}
+        />
+      </div>
       
       <ScrollArea className="flex-1">
         {filteredConversations.length === 0 ? (
           searchTerm ? (
-            <div className="p-4 text-center text-muted-foreground">
-              <p>No se encontraron conversaciones</p>
-              <p className="text-sm">Intenta con otros términos de búsqueda</p>
+            <div className="p-6 text-center text-muted-foreground">
+              <div className="w-16 h-16 mx-auto mb-4 rounded-full bg-gray-100 dark:bg-gray-700 flex items-center justify-center">
+                <svg className="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                </svg>
+              </div>
+              <p className="font-medium">No se encontraron conversaciones</p>
+              <p className="text-sm mt-1">Intenta con otros términos de búsqueda</p>
             </div>
           ) : (
             <ConversationListEmpty />
           )
         ) : (
-          <div className="p-2 space-y-1">
+          <div className="space-y-1">
             {filteredConversations.map((conversation) => {
               const isSelected = selectedConversation?.id === conversation.id;
 

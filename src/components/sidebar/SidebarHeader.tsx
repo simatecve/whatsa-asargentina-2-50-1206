@@ -12,11 +12,11 @@ export const SidebarHeader = ({ isCollapsed }: SidebarHeaderProps) => {
   if (loading) {
     return (
       <div className={cn(
-        "flex items-center justify-center px-3 py-4 border-b border-gray-200 dark:border-gray-800"
+        "flex items-center justify-center px-4 py-6 border-b border-gray-200 dark:border-gray-700 bg-gradient-to-r from-gray-50 to-white dark:from-gray-800 dark:to-gray-700"
       )}>
         <div className={cn(
-          "bg-gray-200 animate-pulse rounded",
-          isCollapsed ? "h-16 w-16" : "h-20 w-20"
+          "bg-gray-200 animate-pulse rounded-xl shadow-sm",
+          isCollapsed ? "h-12 w-12" : "h-16 w-16"
         )} />
       </div>
     );
@@ -24,19 +24,19 @@ export const SidebarHeader = ({ isCollapsed }: SidebarHeaderProps) => {
 
   return (
     <div className={cn(
-      "flex items-center justify-center px-3 py-4 border-b border-gray-200 dark:border-gray-800"
+      "flex items-center justify-center px-4 py-6 border-b border-gray-200 dark:border-gray-700 bg-gradient-to-r from-blue-50 to-indigo-50 dark:from-gray-800 dark:to-gray-700"
     )}>
       {sistemaInfo?.logo_url ? (
         <div className={cn(
-          "flex items-center justify-center",
-          isCollapsed ? "h-16 w-16" : "h-20 w-20"
+          "flex items-center justify-center rounded-xl shadow-sm overflow-hidden",
+          isCollapsed ? "h-12 w-12" : "h-16 w-16"
         )}>
           <img 
             src={sistemaInfo.logo_url} 
             alt={sistemaInfo.nombre_sistema || "Logo"}
             className={cn(
               "max-w-full max-h-full object-contain",
-              isCollapsed ? "h-16 w-16" : "h-20 w-20"
+              isCollapsed ? "h-12 w-12" : "h-16 w-16"
             )}
             onError={(e) => {
               console.error("Error loading logo:", e);
@@ -46,8 +46,8 @@ export const SidebarHeader = ({ isCollapsed }: SidebarHeaderProps) => {
         </div>
       ) : (
         <div className={cn(
-          "bg-azul-100 text-azul-700 font-bold flex items-center justify-center rounded",
-          isCollapsed ? "h-16 w-16 text-lg" : "h-20 w-20 text-xl"
+          "bg-gradient-to-br from-blue-500 to-blue-600 text-white font-bold flex items-center justify-center rounded-xl shadow-lg",
+          isCollapsed ? "h-12 w-12 text-lg" : "h-16 w-16 text-2xl"
         )}>
           {sistemaInfo?.nombre_sistema?.charAt(0) || "K"}
         </div>

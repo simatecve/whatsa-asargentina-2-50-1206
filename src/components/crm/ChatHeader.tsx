@@ -75,31 +75,31 @@ export const ChatHeader = ({
   }, [conversation.instancia_nombre]);
 
   return (
-    <div className="flex items-center justify-between p-4 border-b bg-white">
-      <div className="flex items-center space-x-3">
-        <Avatar>
-          <AvatarFallback className="bg-green-100 text-green-700">
+    <div className="flex items-center justify-between p-6 bg-gradient-to-r from-gray-50 to-white dark:from-gray-800 dark:to-gray-700 shadow-sm">
+      <div className="flex items-center space-x-4">
+        <Avatar className="h-12 w-12 shadow-sm">
+          <AvatarFallback className="bg-gradient-to-br from-green-100 to-green-200 text-green-700 font-semibold">
             {displayName.substring(0, 2).toUpperCase()}
           </AvatarFallback>
         </Avatar>
         <div>
-          <div className="flex items-center gap-2 mb-1">
-            <h3 className="font-medium">
+          <div className="flex items-center gap-3 mb-2">
+            <h3 className="font-semibold text-lg text-gray-900 dark:text-gray-100">
               {displayName}
             </h3>
             {conversation.instancia_nombre && (
               <Badge 
-                className="text-xs px-2 py-1 text-white border-0"
+                className="text-xs px-3 py-1 text-white border-0 shadow-sm"
                 style={{ backgroundColor: instanceColorClasses.value }}
               >
                 {conversation.instancia_nombre}
               </Badge>
             )}
           </div>
-          <p className="text-sm text-muted-foreground">
+          <p className="text-sm text-gray-600 dark:text-gray-400 mb-2">
             {conversation.numero_contacto}
           </p>
-          <div className="mt-1">
+          <div className="mt-2">
             <LeadStatusBadge 
               lead={conversationLead} 
               loading={loadingLead}
@@ -119,13 +119,13 @@ export const ChatHeader = ({
           onCreateLead={onCreateLead}
           loading={leadLoading}
         />
-        <Button variant="ghost" size="icon">
+        <Button variant="ghost" size="icon" className="hover:bg-gray-100 dark:hover:bg-gray-600 rounded-full">
           <Phone className="h-4 w-4" />
         </Button>
-        <Button variant="ghost" size="icon">
+        <Button variant="ghost" size="icon" className="hover:bg-gray-100 dark:hover:bg-gray-600 rounded-full">
           <Video className="h-4 w-4" />
         </Button>
-        <Button variant="ghost" size="icon">
+        <Button variant="ghost" size="icon" className="hover:bg-gray-100 dark:hover:bg-gray-600 rounded-full">
           <MoreVertical className="h-4 w-4" />
         </Button>
       </div>

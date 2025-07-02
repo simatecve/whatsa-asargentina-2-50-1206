@@ -85,10 +85,10 @@ export const MessageInput = ({
   }
 
   return (
-    <div className="flex items-end space-x-2">
+    <div className="flex items-end space-x-3 p-4 bg-white dark:bg-gray-800 border-t border-gray-200 dark:border-gray-700">
       {/* Desktop attachment button - hidden on mobile */}
-      <Button variant="ghost" size="icon" className="shrink-0 mb-2 hidden md:flex">
-        <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+      <Button variant="ghost" size="icon" className="shrink-0 mb-2 hidden md:flex hover:bg-gray-100 dark:hover:bg-gray-700 rounded-full">
+        <svg className="h-5 w-5 text-gray-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.172 7l-6.586 6.586a2 2 0 102.828 2.828l6.414-6.586a4 4 0 00-5.656-5.656l-6.415 6.585a6 6 0 108.486 8.486L20.5 13" />
         </svg>
       </Button>

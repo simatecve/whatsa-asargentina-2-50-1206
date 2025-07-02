@@ -80,36 +80,36 @@ export const ConversationListItem = ({
 
   return (
     <div
-      className={`flex items-center p-3 cursor-pointer hover:bg-gray-100 transition-colors ${
-        isSelected ? "bg-green-50 border-r-2 border-green-500" : ""
+      className={`flex items-center p-4 cursor-pointer transition-all duration-200 hover:bg-gray-50 dark:hover:bg-gray-700 ${
+        isSelected ? "bg-gradient-to-r from-green-50 to-green-100 dark:from-green-900 dark:to-green-800 border-r-4 border-green-500 shadow-sm" : ""
       } ${conversation.instancia_nombre ? `border-l-4` : ""}`}
       style={conversation.instancia_nombre ? { borderLeftColor: instanceColorClasses.value } : {}}
       onClick={onClick}
     >
-      <Avatar className="h-10 w-10 mr-3">
-        <AvatarFallback className="bg-green-100 text-green-700 text-sm">
+      <Avatar className="h-12 w-12 mr-4 shadow-sm">
+        <AvatarFallback className="bg-gradient-to-br from-green-100 to-green-200 text-green-700 text-sm font-semibold">
           {avatarInitials}
         </AvatarFallback>
       </Avatar>
       
       <div className="flex-1 min-w-0">
-        <div className="flex items-center justify-between mb-1">
-          <h4 className="font-medium text-sm truncate pr-2">
+        <div className="flex items-center justify-between mb-2">
+          <h4 className="font-semibold text-sm truncate pr-2 text-gray-900 dark:text-gray-100">
             {displayName}
           </h4>
-          <span className="text-xs text-muted-foreground">
+          <span className="text-xs text-muted-foreground font-medium">
             {formattedTime}
           </span>
         </div>
         
-        <div className="flex items-center justify-between mb-1">
-          <p className="text-xs text-muted-foreground truncate pr-2">
+        <div className="flex items-center justify-between mb-2">
+          <p className="text-xs text-muted-foreground truncate pr-2 leading-relaxed">
             {conversation.ultimo_mensaje || "Sin mensajes"}
           </p>
           {conversation.mensajes_no_leidos > 0 && (
             <Badge 
               variant="default" 
-              className="bg-green-600 hover:bg-green-700 text-white text-xs px-2 py-1 rounded-full min-w-[20px] h-5 flex items-center justify-center"
+              className="bg-gradient-to-r from-green-500 to-green-600 hover:from-green-600 hover:to-green-700 text-white text-xs px-2.5 py-1 rounded-full min-w-[24px] h-6 flex items-center justify-center shadow-sm"
             >
               {conversation.mensajes_no_leidos > 99 ? "99+" : conversation.mensajes_no_leidos}
             </Badge>
@@ -122,7 +122,7 @@ export const ConversationListItem = ({
           </p>
           {conversation.instancia_nombre && (
             <Badge 
-              className="text-xs px-2 py-1 h-5 text-white border-0"
+              className="text-xs px-2.5 py-1 h-6 text-white border-0 shadow-sm"
               style={{ backgroundColor: instanceColorClasses.value }}
             >
               {conversation.instancia_nombre}

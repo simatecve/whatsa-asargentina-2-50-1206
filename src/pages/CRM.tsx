@@ -27,9 +27,9 @@ const CRM = () => {
   } = useCRMState();
 
   return (
-    <div className="h-screen flex flex-col overflow-hidden">
+    <div className="h-screen flex flex-col overflow-hidden bg-gradient-to-br from-gray-50 to-white dark:from-gray-900 dark:to-gray-800">
       {/* Header */}
-      <div className="shrink-0">
+      <div className="shrink-0 bg-white dark:bg-gray-800 shadow-sm border-b border-gray-200 dark:border-gray-700">
         <CRMHeader
           selectedInstanceId={selectedInstanceId}
           onInstanceChange={setSelectedInstanceId}

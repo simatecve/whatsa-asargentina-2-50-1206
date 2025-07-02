@@ -31,8 +31,8 @@ const DashboardLayout = () => {
   // Only show loading spinner for non-CRM pages
   if (loading && !isCrmPage) {
     return (
-      <div className="min-h-screen bg-gray-50 dark:bg-gray-900 flex items-center justify-center">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+      <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100 dark:from-gray-900 dark:to-gray-800 flex items-center justify-center">
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary shadow-lg"></div>
       </div>
     );
   }
@@ -44,7 +44,7 @@ const DashboardLayout = () => {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
+    <div className="min-h-screen bg-gradient-to-br from-gray-50 via-white to-gray-100 dark:from-gray-900 dark:via-gray-800 dark:to-gray-900">
       <Sidebar 
         mobileOpen={mobileOpen} 
         setMobileOpen={setMobileOpen} 
@@ -55,8 +55,10 @@ const DashboardLayout = () => {
       <div className={`transition-all duration-300 ${sidebarCollapsed ? 'lg:pl-16' : 'lg:pl-64'}`}>
         <Header setMobileOpen={setMobileOpen} />
         
-        <main className="p-4 md:p-6">
-          <Outlet />
+        <main className="p-6 md:p-8">
+          <div className="max-w-7xl mx-auto">
+            <Outlet />
+          </div>
         </main>
       </div>
     </div>

@@ -12,12 +12,12 @@ export const MessageBubble = ({ message }: MessageBubbleProps) => {
   const isRead = message.estado_lectura;
 
   return (
-    <div className={`flex ${isOutgoing ? 'justify-end' : 'justify-start'} px-3 md:px-2`}>
+    <div className={`flex ${isOutgoing ? 'justify-end' : 'justify-start'} px-3 md:px-4 mb-4`}>
       <div
-        className={`max-w-[80%] md:max-w-[85%] sm:max-w-xs lg:max-w-md px-3 md:px-4 py-2 rounded-lg break-words ${
+        className={`max-w-[80%] md:max-w-[85%] sm:max-w-xs lg:max-w-md px-4 py-3 rounded-2xl break-words shadow-sm ${
           isOutgoing
-            ? 'bg-green-500 text-white rounded-br-none'
-            : 'bg-gray-200 text-gray-900 rounded-bl-none'
+            ? 'bg-gradient-to-r from-green-500 to-green-600 text-white rounded-br-md'
+            : 'bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 rounded-bl-md border border-gray-200 dark:border-gray-600'
         }`}
       >
         <MessageContent message={message} />
