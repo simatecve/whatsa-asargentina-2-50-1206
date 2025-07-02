@@ -1,5 +1,5 @@
 
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -15,7 +15,7 @@ import { useSubscriptionValidation } from "@/hooks/useSubscriptionValidation";
 const Campanas = () => {
   const [showForm, setShowForm] = useState(false);
   const [searchTerm, setSearchTerm] = useState("");
-  const { campanas, loading, error, refetch } = useCampanasData("todas");
+  const { campanas, loading, fetchCampanas } = useCampanasData("todas");
   const { suscripcionActiva, limits } = useSubscriptionValidation();
 
   const filteredCampanas = campanas.filter(campana =>
@@ -24,7 +24,7 @@ const Campanas = () => {
 
   const handleCampanaCreated = () => {
     setShowForm(false);
-    refetch();
+    fetchCampanas();
   };
 
   const handleCreateNew = () => {
@@ -130,10 +130,6 @@ const Campanas = () => {
               <CardContent>
                 {loading ? (
                   <CampanasLoading />
-                ) : error ? (
-                  <div className="text-center py-8 text-red-500">
-                    Error al cargar las campañas: {error}
-                  </div>
                 ) : filteredCampanas.length === 0 ? (
                   <CampanasEmptyState estado="todas" onCreateNew={handleCreateNew} />
                 ) : (
