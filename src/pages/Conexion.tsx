@@ -1,96 +1,76 @@
 
-import { useState, useEffect } from "react";
-import { fetchAPIConfig } from "@/services/apiService";
-import QRModal from "@/components/QRModal";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { ConnectionTabs } from "@/components/connection/ConnectionTabs";
-import { ConnectionProvider, useConnection } from "@/contexts/ConnectionContext";
-
-const ConexionContent = () => {
-  const [activeTab, setActiveTab] = useState("instances");
-  const [apiConfigExists, setApiConfigExists] = useState(false);
-  const [checkingConfig, setCheckingConfig] = useState(true);
-  const { currentQRCode, currentInstanceName, modalOpen, handleCloseModal } = useConnection();
-
-  const checkAPIConfig = async () => {
-    setCheckingConfig(true);
-    try {
-      console.log("Verificando configuración de API...");
-      const config = await fetchAPIConfig();
-      console.log("Configuración obtenida:", config);
-      
-      const configExists = !!(config && config.server_url && config.api_key);
-      setApiConfigExists(configExists);
-      
-      console.log("¿Configuración válida?", configExists);
-    } catch (error) {
-      console.error("Error checking API config:", error);
-      setApiConfigExists(false);
-    } finally {
-      setCheckingConfig(false);
-    }
-  };
-
-  useEffect(() => {
-    checkAPIConfig();
-  }, []);
-
-  if (checkingConfig) {
-    return (
-      <div className="space-y-6">
-        <div className="bg-gradient-to-r from-azul-100 to-azul-50 dark:from-azul-900 dark:to-gray-900 p-6 rounded-lg border border-azul-200 dark:border-azul-800 shadow-sm">
-          <h1 className="text-2xl font-bold tracking-tight text-azul-700 dark:text-azul-300">
-            Gestión de Conexiones
-          </h1>
-          <p className="text-muted-foreground mt-1">
-            Verificando configuración de API Evolution...
-          </p>
-        </div>
-        <div className="flex justify-center items-center py-8">
-          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-azul-600"></div>
-        </div>
-      </div>
-    );
-  }
-
-  return (
-    <div className="space-y-6">
-      <QRModal
-        open={modalOpen}
-        onClose={handleCloseModal}
-        qrCode={currentQRCode}
-        instanceName={currentInstanceName}
-      />
-
-      <div className="bg-gradient-to-r from-azul-100 to-azul-50 dark:from-azul-900 dark:to-gray-900 p-6 rounded-lg border border-azul-200 dark:border-azul-800 shadow-sm">
-        <h1 className="text-2xl font-bold tracking-tight text-azul-700 dark:text-azul-300">
-          Gestión de Conexiones
-        </h1>
-        <p className="text-muted-foreground mt-1">
-          Cree y administre sus instancias de WhatsApp conectadas a la API Evolution.
-        </p>
-        {!apiConfigExists && (
-          <div className="mt-3 p-3 bg-yellow-100 dark:bg-yellow-900/20 border border-yellow-300 dark:border-yellow-700 rounded-md">
-            <p className="text-sm text-yellow-800 dark:text-yellow-200">
-              ⚠️ Configuración de API Evolution no encontrada en la base de datos. Contacte al administrador para configurar la conexión.
-            </p>
-          </div>
-        )}
-      </div>
-
-      <ConnectionTabs 
-        activeTab={activeTab} 
-        setActiveTab={setActiveTab} 
-        apiConfigExists={apiConfigExists}
-      />
-    </div>
-  );
-};
+import { Wifi, Sparkles, TrendingUp, Zap } from "lucide-react";
+import { useSubscriptionValidation } from "@/hooks/useSubscriptionValidation";
 
 const Conexion = () => {
+  const { suscripcionActiva, limits } = useSubscriptionValidation();
+
   return (
-    <ConnectionProvider>
-      <ConexionContent />
-    </ConnectionProvider>
+    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50/30 to-indigo-50/20 dark:from-slate-900 dark:via-slate-800 dark:to-slate-900">
+      <div className="space-y-8 p-6">
+        {/* Header moderno con gradiente */}
+        <div className="relative overflow-hidden bg-gradient-to-r from-blue-600 via-indigo-600 to-purple-600 p-8 rounded-2xl shadow-2xl border border-blue-200/20">
+          <div className="absolute inset-0 bg-gradient-to-r from-blue-600/90 to-purple-600/90"></div>
+          <div className="absolute top-0 right-0 -mt-4 -mr-4 w-24 h-24 bg-white/10 rounded-full blur-xl"></div>
+          <div className="absolute bottom-0 left-0 -mb-4 -ml-4 w-32 h-32 bg-white/5 rounded-full blur-2xl"></div>
+          
+          <div className="relative z-10 flex items-center justify-between">
+            <div>
+              <div className="flex items-center gap-3 mb-4">
+                <div className="p-3 bg-white/20 rounded-xl backdrop-blur-sm">
+                  <Wifi className="h-8 w-8 text-white" />
+                </div>
+                <div>
+                  <h1 className="text-3xl font-bold text-white tracking-tight">
+                    Conexión WhatsApp
+                  </h1>
+                  <p className="text-blue-100 text-lg mt-1">
+                    Conecta y gestiona tus instancias de WhatsApp
+                  </p>
+                </div>
+              </div>
+              
+              {limits && (
+                <div className="flex items-center gap-6 text-blue-100">
+                  <div className="flex items-center gap-2">
+                    <TrendingUp className="h-4 w-4" />
+                    <span className="text-sm">Instancias: {limits.currentInstancias}/{limits.maxInstancias}</span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <Sparkles className="h-4 w-4" />
+                    <span className="text-sm">Plan: {suscripcionActiva?.planes?.nombre}</span>
+                  </div>
+                </div>
+              )}
+            </div>
+            
+            <div className="hidden lg:block">
+              <div className="p-4 bg-white/10 rounded-xl backdrop-blur-sm border border-white/20">
+                <Zap className="h-12 w-12 text-white mb-2" />
+                <p className="text-white/90 text-sm font-medium">Conexión</p>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* Contenido principal */}
+        <Card className="bg-gradient-to-br from-white to-slate-50 dark:from-slate-800 dark:to-slate-900 rounded-2xl shadow-xl border-0 ring-1 ring-slate-200/50 dark:ring-slate-700/50">
+          <CardHeader className="pb-4">
+            <CardTitle className="text-xl font-bold text-slate-800 dark:text-slate-200 flex items-center gap-3">
+              <div className="p-2 bg-gradient-to-r from-blue-500 to-indigo-500 rounded-lg">
+                <Wifi className="h-5 w-5 text-white" />
+              </div>
+              Gestión de Instancias
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <ConnectionTabs />
+          </CardContent>
+        </Card>
+      </div>
+    </div>
   );
 };
 

@@ -1,126 +1,131 @@
 
 import { useState } from "react";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { ContactLists } from "@/components/contacts/ContactLists";
-import { ConnectionProvider } from "@/contexts/ConnectionContext";
-import { Card, CardContent } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
-import { Plus } from "lucide-react";
-import { 
-  Dialog, 
-  DialogContent, 
-  DialogHeader, 
-  DialogTitle, 
-  DialogTrigger 
-} from "@/components/ui/dialog";
-import { ContactListForm } from "@/components/contacts/ContactListForm";
+import { ContactImport } from "@/components/contacts/ContactImport";
+import { Plus, Search, Users, Sparkles, TrendingUp, Upload } from "lucide-react";
 import { useSubscriptionValidation } from "@/hooks/useSubscriptionValidation";
-import { LimitReachedAlert } from "@/components/subscription/LimitReachedAlert";
 
 const Contactos = () => {
-  const [activeTab, setActiveTab] = useState("listas");
-  const [newListDialogOpen, setNewListDialogOpen] = useState(false);
-  const { limits, suscripcionActiva, validateAndBlock, checkLimit, loading, isExpired } = useSubscriptionValidation();
-  
-  const handleOpenNewListDialog = () => {
-    if (validateAndBlock('contactos')) {
-      setNewListDialogOpen(true);
-    }
-  };
+  const [searchTerm, setSearchTerm] = useState("");
+  const { suscripcionActiva, limits } = useSubscriptionValidation();
 
-  // Show loading only briefly
-  if (loading) {
-    return (
-      <div className="p-6 flex items-center justify-center">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
-      </div>
-    );
-  }
-
-  const isAtContactLimit = limits ? checkLimit('contactos') : false;
-  const showSubscriptionAlert = !loading && isExpired;
-  
   return (
-    <ConnectionProvider>
-      <div className="p-6 space-y-6">
-        <div className="flex justify-between items-center">
-          <div>
-            <h1 className="text-2xl font-bold">Contactos</h1>
-            <p className="text-muted-foreground">
-              Gestiona tus listas de contactos
+    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50/30 to-indigo-50/20 dark:from-slate-900 dark:via-slate-800 dark:to-slate-900">
+      <div className="space-y-8 p-6">
+        {/* Header moderno con gradiente */}
+        <div className="relative overflow-hidden bg-gradient-to-r from-blue-600 via-indigo-600 to-purple-600 p-8 rounded-2xl shadow-2xl border border-blue-200/20">
+          <div className="absolute inset-0 bg-gradient-to-r from-blue-600/90 to-purple-600/90"></div>
+          <div className="absolute top-0 right-0 -mt-4 -mr-4 w-24 h-24 bg-white/10 rounded-full blur-xl"></div>
+          <div className="absolute bottom-0 left-0 -mb-4 -ml-4 w-32 h-32 bg-white/5 rounded-full blur-2xl"></div>
+          
+          <div className="relative z-10 flex items-center justify-between">
+            <div>
+              <div className="flex items-center gap-3 mb-4">
+                <div className="p-3 bg-white/20 rounded-xl backdrop-blur-sm">
+                  <Users className="h-8 w-8 text-white" />
+                </div>
+                <div>
+                  <h1 className="text-3xl font-bold text-white tracking-tight">
+                    Gestión de Contactos
+                  </h1>
+                  <p className="text-blue-100 text-lg mt-1">
+                    Organiza y administra tus listas de contactos
+                  </p>
+                </div>
+              </div>
+              
               {limits && (
-                <span className="ml-2 text-sm">
-                  ({limits.currentContactos}/{limits.maxContactos} contactos)
-                </span>
+                <div className="flex items-center gap-6 text-blue-100">
+                  <div className="flex items-center gap-2">
+                    <TrendingUp className="h-4 w-4" />
+                    <span className="text-sm">Contactos: {limits.currentContactos}/{limits.maxContactos}</span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <Sparkles className="h-4 w-4" />
+                    <span className="text-sm">Plan: {suscripcionActiva?.planes?.nombre}</span>
+                  </div>
+                </div>
               )}
-              {showSubscriptionAlert && (
-                <span className="ml-2 text-sm text-red-600">
-                  - Plan vencido, funcionalidad limitada
-                </span>
-              )}
-            </p>
-          </div>
-          <Button 
-            className="flex gap-2 bg-green-500 hover:bg-green-600"
-            onClick={handleOpenNewListDialog}
-            disabled={isAtContactLimit && !showSubscriptionAlert}
-          >
-            <Plus className="h-4 w-4" />
-            Nueva Lista
-          </Button>
-        </div>
-
-        {/* Alerta discreta de suscripción vencida */}
-        {showSubscriptionAlert && (
-          <div className="px-4 py-2 bg-red-50 border border-red-200 rounded-lg">
-            <div className="text-sm text-red-700">
-              ⚠️ Tu plan ha vencido. Algunas funcionalidades pueden estar limitadas.{" "}
-              <button 
-                onClick={() => window.location.href = "/dashboard/planes"}
-                className="text-red-800 underline hover:text-red-900"
-              >
-                Renovar plan
-              </button>
+            </div>
+            
+            <div className="hidden lg:block">
+              <div className="p-4 bg-white/10 rounded-xl backdrop-blur-sm border border-white/20">
+                <Users className="h-12 w-12 text-white mb-2" />
+                <p className="text-white/90 text-sm font-medium">Contactos</p>
+              </div>
             </div>
           </div>
-        )}
+        </div>
 
-        {/* Mostrar alerta si se alcanzó el límite y hay plan activo */}
-        {isAtContactLimit && !showSubscriptionAlert && limits && (
-          <LimitReachedAlert
-            type="contactos"
-            current={limits.currentContactos}
-            max={limits.maxContactos}
-            blocking={true}
-          />
-        )}
+        {/* Tabs modernos */}
+        <Tabs defaultValue="listas" className="w-full">
+          <div className="flex flex-col sm:flex-row gap-4 sm:gap-0 sm:items-center sm:justify-between mb-6">
+            <TabsList className="grid w-full sm:w-auto grid-cols-2 bg-white/60 backdrop-blur-sm rounded-xl border border-slate-200/60 shadow-lg">
+              <TabsTrigger 
+                value="listas" 
+                className="data-[state=active]:bg-gradient-to-r data-[state=active]:from-blue-500 data-[state=active]:to-indigo-500 data-[state=active]:text-white rounded-lg font-medium transition-all duration-200"
+              >
+                Mis Listas
+              </TabsTrigger>
+              <TabsTrigger 
+                value="importar" 
+                className="data-[state=active]:bg-gradient-to-r data-[state=active]:from-green-500 data-[state=active]:to-emerald-500 data-[state=active]:text-white rounded-lg font-medium transition-all duration-200"
+              >
+                Importar Contactos
+              </TabsTrigger>
+            </TabsList>
+            
+            <div className="flex gap-3">
+              <div className="relative">
+                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
+                <Input
+                  placeholder="Buscar listas..."
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                  className="pl-10 bg-white/60 backdrop-blur-sm border border-slate-200/60 rounded-xl shadow-sm hover:shadow-md transition-shadow duration-200"
+                />
+              </div>
+            </div>
+          </div>
 
-        <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-          <TabsList className="grid w-full max-w-md grid-cols-1">
-            <TabsTrigger value="listas">Listas de Contactos</TabsTrigger>
-          </TabsList>
-          <TabsContent value="listas" className="mt-4">
-            <Card>
-              <CardContent className="p-4">
-                <ContactLists onCreateNew={handleOpenNewListDialog} />
+          <TabsContent value="listas" className="space-y-6">
+            <Card className="bg-gradient-to-br from-white to-slate-50 dark:from-slate-800 dark:to-slate-900 rounded-2xl shadow-xl border-0 ring-1 ring-slate-200/50 dark:ring-slate-700/50">
+              <CardHeader className="pb-4">
+                <CardTitle className="text-xl font-bold text-slate-800 dark:text-slate-200 flex items-center gap-3">
+                  <div className="p-2 bg-gradient-to-r from-blue-500 to-indigo-500 rounded-lg">
+                    <Users className="h-5 w-5 text-white" />
+                  </div>
+                  Listas de Contactos
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <ContactLists searchTerm={searchTerm} />
+              </CardContent>
+            </Card>
+          </TabsContent>
+
+          <TabsContent value="importar" className="space-y-6">
+            <Card className="bg-gradient-to-br from-white to-slate-50 dark:from-slate-800 dark:to-slate-900 rounded-2xl shadow-xl border-0 ring-1 ring-slate-200/50 dark:ring-slate-700/50">
+              <CardHeader className="pb-4">
+                <CardTitle className="text-xl font-bold text-slate-800 dark:text-slate-200 flex items-center gap-3">
+                  <div className="p-2 bg-gradient-to-r from-green-500 to-emerald-500 rounded-lg">
+                    <Upload className="h-5 w-5 text-white" />
+                  </div>
+                  Importar Contactos
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <ContactImport />
               </CardContent>
             </Card>
           </TabsContent>
         </Tabs>
-
-        <Dialog open={newListDialogOpen} onOpenChange={setNewListDialogOpen}>
-          <DialogContent>
-            <DialogHeader>
-              <DialogTitle>Nueva Lista de Contactos</DialogTitle>
-            </DialogHeader>
-            <ContactListForm 
-              list={null} 
-              onClose={() => setNewListDialogOpen(false)} 
-            />
-          </DialogContent>
-        </Dialog>
       </div>
-    </ConnectionProvider>
+    </div>
   );
 };
 

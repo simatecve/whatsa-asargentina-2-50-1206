@@ -1,189 +1,74 @@
 
-import { useEffect, useState } from "react";
-import { ConnectionProvider } from "@/contexts/ConnectionContext";
-import { supabase } from "@/integrations/supabase/client";
-import { toast } from "sonner";
-import { Card } from "@/components/ui/card";
-import { Skeleton } from "@/components/ui/skeleton";
-import KanbanBoard from "@/components/leads/KanbanBoard";
-import { Lead } from "@/types/lead";
-import { useLeadNavigation } from "@/hooks/useLeadNavigation";
-
-const LeadsKanbanContent = () => {
-  const [leads, setLeads] = useState<Lead[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-  const [userInstances, setUserInstances] = useState<string[]>([]);
-  const { navigateToConversation } = useLeadNavigation();
-
-  // Fetch the logged in user's instances
-  useEffect(() => {
-    const fetchUserInstances = async () => {
-      const { data: { session } } = await supabase.auth.getSession();
-      
-      if (!session) {
-        setError("No hay sesión activa");
-        setLoading(false);
-        return;
-      }
-
-      const { data: instances, error: instancesError } = await supabase
-        .from("instancias")
-        .select("nombre")
-        .eq("user_id", session.user.id);
-
-      if (instancesError) {
-        console.error("Error fetching instances:", instancesError);
-        setError("Error al cargar las instancias");
-        setLoading(false);
-        return;
-      }
-
-      if (instances && instances.length > 0) {
-        const instanceNames = instances.map(inst => inst.nombre);
-        setUserInstances(instanceNames);
-      } else {
-        setError("No hay instancias disponibles");
-        setLoading(false);
-      }
-    };
-
-    fetchUserInstances();
-  }, []);
-
-  // Fetch leads for user's instances
-  useEffect(() => {
-    if (userInstances.length === 0) return;
-
-    const fetchLeads = async () => {
-      try {
-        setLoading(true);
-        
-        const { data, error: leadsError } = await supabase
-          .from("leads")
-          .select("*")
-          .in("instancia", userInstances);
-
-        if (leadsError) {
-          console.error("Error fetching leads:", leadsError);
-          setError("Error al cargar los leads");
-          toast.error("Error al cargar los leads");
-        } else {
-          setLeads(data || []);
-        }
-      } catch (err) {
-        console.error("Exception fetching leads:", err);
-        setError("Ocurrió un error al conectar con la base de datos");
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    fetchLeads();
-
-    // Set up realtime subscription to listen for changes
-    const channel = supabase
-      .channel('leads-changes')
-      .on('postgres_changes', 
-        { 
-          event: '*', 
-          schema: 'public', 
-          table: 'leads',
-          filter: `instancia=in.(${userInstances.map(i => `'${i}'`).join(',')})` 
-        }, 
-        (payload) => {
-          console.log('Change received!', payload);
-          
-          if (payload.eventType === 'INSERT') {
-            setLeads(prev => [...prev, payload.new as Lead]);
-          } else if (payload.eventType === 'UPDATE') {
-            setLeads(prev => prev.map(lead => 
-              lead.id === payload.new.id ? payload.new as Lead : lead
-            ));
-            
-            // Show a toast notification when a lead status is updated
-            if ((payload.old as Lead).status !== (payload.new as Lead).status) {
-              toast.success(`Lead actualizado: ${(payload.new as Lead).pushname || 'Sin nombre'}`);
-            }
-          } else if (payload.eventType === 'DELETE') {
-            setLeads(prev => prev.filter(lead => lead.id !== payload.old.id));
-          }
-        }
-      )
-      .subscribe();
-
-    return () => {
-      supabase.removeChannel(channel);
-    };
-  }, [userInstances]);
-
-  // Function to update a lead's status
-  const updateLeadStatus = async (leadId: number, newStatus: string) => {
-    try {
-      const { error } = await supabase
-        .from('leads')
-        .update({ status: newStatus })
-        .eq('id', leadId);
-
-      if (error) {
-        console.error("Error updating lead status:", error);
-        toast.error("Error al actualizar el estado del lead");
-        return false;
-      }
-
-      // We don't need to update the state here as the realtime subscription will handle it
-      return true;
-    } catch (err) {
-      console.error("Exception updating lead:", err);
-      toast.error("Error al actualizar el lead");
-      return false;
-    }
-  };
-
-  // Handle lead click to navigate to CRM
-  const handleLeadClick = (lead: Lead) => {
-    toast.success(`Navegando al CRM para ${lead.pushname || 'Sin nombre'}...`);
-    navigateToConversation(lead);
-  };
-
-  if (loading) {
-    return (
-      <Card className="w-full h-[calc(100vh-120px)] bg-white dark:bg-gray-900 rounded-lg overflow-hidden border border-gray-200 dark:border-gray-700 shadow-sm p-6">
-        <Skeleton className="w-full h-full" />
-      </Card>
-    );
-  }
-
-  if (error) {
-    return (
-      <Card className="w-full h-[calc(100vh-120px)] bg-white dark:bg-gray-900 rounded-lg overflow-hidden border border-gray-200 dark:border-gray-700 shadow-sm p-6 flex items-center justify-center">
-        <div className="text-center">
-          <h3 className="text-xl font-medium text-gray-700 dark:text-gray-300 mb-2">Error</h3>
-          <p className="text-gray-500 dark:text-gray-400">{error}</p>
-        </div>
-      </Card>
-    );
-  }
-
-  return (
-    <div className="w-full h-[calc(100vh-120px)] bg-white dark:bg-gray-900 rounded-lg overflow-hidden border border-gray-200 dark:border-gray-700 shadow-sm p-6">
-      <KanbanBoard 
-        leads={leads} 
-        onUpdateStatus={updateLeadStatus}
-        onLeadClick={handleLeadClick}
-      />
-    </div>
-  );
-};
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { KanbanBoard } from "@/components/leads/KanbanBoard";
+import { Kanban, Sparkles, TrendingUp, Target } from "lucide-react";
+import { useSubscriptionValidation } from "@/hooks/useSubscriptionValidation";
 
 const LeadsKanban = () => {
+  const { suscripcionActiva } = useSubscriptionValidation();
+
   return (
-    <ConnectionProvider>
-      <div className="h-full">
-        <h1 className="text-2xl font-semibold text-gray-800 dark:text-gray-100 mb-4">Leads Kanban</h1>
-        <LeadsKanbanContent />
+    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50/30 to-indigo-50/20 dark:from-slate-900 dark:via-slate-800 dark:to-slate-900">
+      <div className="space-y-8 p-6">
+        {/* Header moderno con gradiente */}
+        <div className="relative overflow-hidden bg-gradient-to-r from-green-600 via-blue-600 to-indigo-600 p-8 rounded-2xl shadow-2xl border border-green-200/20">
+          <div className="absolute inset-0 bg-gradient-to-r from-green-600/90 to-indigo-600/90"></div>
+          <div className="absolute top-0 right-0 -mt-4 -mr-4 w-24 h-24 bg-white/10 rounded-full blur-xl"></div>
+          <div className="absolute bottom-0 left-0 -mb-4 -ml-4 w-32 h-32 bg-white/5 rounded-full blur-2xl"></div>
+          
+          <div className="relative z-10 flex items-center justify-between">
+            <div>
+              <div className="flex items-center gap-3 mb-4">
+                <div className="p-3 bg-white/20 rounded-xl backdrop-blur-sm">
+                  <Kanban className="h-8 w-8 text-white" />
+                </div>
+                <div>
+                  <h1 className="text-3xl font-bold text-white tracking-tight">
+                    Kanban de Leads
+                  </h1>
+                  <p className="text-green-100 text-lg mt-1">
+                    Gestiona tu pipeline de ventas de forma visual
+                  </p>
+                </div>
+              </div>
+              
+              <div className="flex items-center gap-6 text-green-100">
+                <div className="flex items-center gap-2">
+                  <Target className="h-4 w-4" />
+                  <span className="text-sm">Pipeline de ventas</span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <Sparkles className="h-4 w-4" />
+                  <span className="text-sm">Plan: {suscripcionActiva?.planes?.nombre || 'Básico'}</span>
+                </div>
+              </div>
+            </div>
+            
+            <div className="hidden lg:block">
+              <div className="p-4 bg-white/10 rounded-xl backdrop-blur-sm border border-white/20">
+                <TrendingUp className="h-12 w-12 text-white mb-2" />
+                <p className="text-white/90 text-sm font-medium">Kanban</p>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* Contenido principal */}
+        <Card className="bg-gradient-to-br from-white to-slate-50 dark:from-slate-800 dark:to-slate-900 rounded-2xl shadow-xl border-0 ring-1 ring-slate-200/50 dark:ring-slate-700/50">
+          <CardHeader className="pb-4">
+            <CardTitle className="text-xl font-bold text-slate-800 dark:text-slate-200 flex items-center gap-3">
+              <div className="p-2 bg-gradient-to-r from-green-500 to-blue-500 rounded-lg">
+                <Kanban className="h-5 w-5 text-white" />
+              </div>
+              Pipeline de Ventas
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="p-0">
+            <KanbanBoard />
+          </CardContent>
+        </Card>
       </div>
-    </ConnectionProvider>
+    </div>
   );
 };
 
