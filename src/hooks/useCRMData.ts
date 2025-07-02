@@ -82,6 +82,7 @@ export const useCRMData = (selectedInstanceId?: string) => {
 
   // Handler para mensajes enviados
   const handleMessageSent = useCallback((messageText: string) => {
+    console.log('Message sent handler called:', messageText);
     if (selectedConversation) {
       addMessageToChat(selectedConversation, messageText);
     }
@@ -99,6 +100,14 @@ export const useCRMData = (selectedInstanceId?: string) => {
 
   // El loading general solo debe incluir la carga de conversaciones
   const loading = conversationsLoading;
+
+  console.log('useCRMData returning:', {
+    conversationsCount: conversations.length,
+    messagesCount: messages.length,
+    selectedConversationId: selectedConversation?.id,
+    messagesLoading,
+    hasMoreMessages
+  });
 
   return {
     conversations,

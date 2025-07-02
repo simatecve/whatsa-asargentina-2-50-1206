@@ -7,7 +7,7 @@ import { ChatHeader } from "./ChatHeader";
 import { ChatMessages } from "./ChatMessages";
 import { BotToggleButton } from "./BotToggleButton";
 import { useChatWindowState } from "@/hooks/crm/useChatWindowState";
-import { Conversation, Message } from "@/hooks/useCRMData";
+import { Conversation, Message } from "@/types/crm";
 
 interface ChatWindowProps {
   selectedConversation: Conversation | null;
@@ -28,6 +28,13 @@ export const ChatWindow = ({
   onLoadMore,
   onMessageSent
 }: ChatWindowProps) => {
+  console.log('ChatWindow render:', { 
+    selectedConversation: selectedConversation?.id, 
+    messagesCount: messages.length,
+    loading,
+    messagesLoading 
+  });
+
   if (!selectedConversation) {
     return (
       <div className="h-full flex items-center justify-center text-muted-foreground">
@@ -48,6 +55,7 @@ export const ChatWindow = ({
   } = useChatWindowState(selectedConversation, messages);
 
   const handleMessageSent = useCallback((message: string) => {
+    console.log('Message sent in ChatWindow:', message);
     if (onMessageSent) {
       onMessageSent(message);
     }
@@ -112,23 +120,14 @@ export const ChatWindow = ({
 
       {/* Messages area - this should take the remaining space */}
       <div className="flex-1 min-h-0 pt-20 md:pt-0 overflow-hidden py-[6px]">
-        {messagesLoading ? (
-          <div className="h-full flex items-center justify-center">
-            <div className="text-center">
-              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-green-600 mx-auto mb-4"></div>
-              <p className="text-muted-foreground">Cargando mensajes...</p>
-            </div>
-          </div>
-        ) : (
-          <ChatMessages 
-            messages={messages} 
-            messagesEndRef={messagesEndRef} 
-            scrollAreaRef={scrollAreaRef} 
-            hasMoreMessages={hasMoreMessages}
-            onLoadMore={onLoadMore}
-            loadingMore={messagesLoading}
-          />
-        )}
+        <ChatMessages 
+          messages={messages} 
+          messagesEndRef={messagesEndRef} 
+          scrollAreaRef={scrollAreaRef} 
+          hasMoreMessages={hasMoreMessages}
+          onLoadMore={onLoadMore}
+          loadingMore={messagesLoading}
+        />
       </div>
 
       {/* Message input - fixed at bottom */}

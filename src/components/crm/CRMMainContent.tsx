@@ -28,6 +28,14 @@ export const CRMMainContent = ({
   handleLoadMoreMessages,
   handleMessageSent
 }: CRMMainContentProps) => {
+  console.log('CRMMainContent render:', { 
+    conversationsCount: conversations.length,
+    selectedConversation: selectedConversation?.id,
+    messagesCount: messages.length,
+    messagesLoading,
+    hasMoreMessages
+  });
+
   return (
     <div className="grid grid-cols-12 gap-4 h-full">
       {/* Conversations List */}
@@ -42,20 +50,14 @@ export const CRMMainContent = ({
 
       {/* Chat Window */}
       <div className="col-span-12 lg:col-span-5 xl:col-span-6">
-        {selectedConversation ? (
-          <ChatWindow
-            selectedConversation={selectedConversation}
-            messages={messages}
-            loading={messagesLoading}
-            hasMoreMessages={hasMoreMessages}
-            onLoadMore={handleLoadMoreMessages}
-            onMessageSent={handleMessageSent}
-          />
-        ) : (
-          <div className="h-full flex items-center justify-center text-muted-foreground">
-            <p>Selecciona una conversación para comenzar</p>
-          </div>
-        )}
+        <ChatWindow
+          selectedConversation={selectedConversation}
+          messages={messages}
+          messagesLoading={messagesLoading}
+          hasMoreMessages={hasMoreMessages}
+          onLoadMore={handleLoadMoreMessages}
+          onMessageSent={handleMessageSent}
+        />
       </div>
 
       {/* Internal Notes Panel */}

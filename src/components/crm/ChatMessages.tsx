@@ -2,7 +2,7 @@
 import { useEffect, useRef, useCallback } from "react";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { MessageBubble } from "./MessageBubble";
-import { Message } from "@/hooks/useCRMData";
+import { Message } from "@/types/crm";
 import { Button } from "@/components/ui/button";
 import { ArrowUp } from "lucide-react";
 
@@ -29,6 +29,13 @@ export const ChatMessages = ({
 }: ChatMessagesProps) => {
   const previousScrollHeight = useRef<number>(0);
   const isLoadingMoreRef = useRef<boolean>(false);
+
+  console.log('ChatMessages render:', { 
+    messagesCount: messages.length, 
+    hasMoreMessages, 
+    loadingMore,
+    isAtMessageLimit 
+  });
 
   // Si está en el límite de mensajes, mostrar mensaje informativo simple SIN alerta
   if (isAtMessageLimit && messageUsage) {
