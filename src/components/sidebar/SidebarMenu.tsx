@@ -12,8 +12,7 @@ import {
   CreditCard,
   MessageSquare,
   Bot,
-  Kanban,
-  UserCheck
+  Kanban
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 
@@ -88,15 +87,6 @@ const SidebarMenu = ({ collapsed }) => {
             icon={<Users className="h-5 w-5" />}
             title="Contactos"
             href="/dashboard/contactos"
-            collapsed={collapsed}
-          />
-        </li>
-        
-        <li>
-          <SidebarItem
-            icon={<UserCheck className="h-5 w-5" />}
-            title="Gestión de Equipos"
-            href="/dashboard/equipos"
             collapsed={collapsed}
           />
         </li>

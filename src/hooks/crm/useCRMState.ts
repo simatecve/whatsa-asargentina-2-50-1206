@@ -54,19 +54,16 @@ export const useCRMState = () => {
   // Procesar conversaciones para determinar cuáles están bloqueadas
   useEffect(() => {
     if (allConversations.length > 0) {
-      try {
-        processConversations(allConversations);
-      } catch (error) {
-        console.error('Error processing conversations limits:', error);
-      }
+      processConversations(allConversations);
     }
   }, [allConversations, processConversations]);
 
   // Obtener conversaciones filtradas usando la función memoizada
   const conversations = getFilteredConversations(allConversations);
 
-  // Procesar navegación desde Kanban
+  // Procesar navegación desde Kanban - efecto unificado y simplificado
   useEffect(() => {
+    // Evitar procesamiento múltiple
     if (navigationProcessedRef.current) return;
 
     const instanceIdParam = getParam('instanceId');
@@ -116,16 +113,20 @@ export const useCRMState = () => {
       return true;
     };
 
+    // Si las conversaciones ya están disponibles, buscar inmediatamente
+    // Si no, el siguiente useEffect se encargará cuando estén disponibles
     findAndSelectConversation();
-  }, [getParam]);
 
-  // Buscar conversación cuando cambien las conversaciones
+  }, [getParam]); // Solo depende de getParam para evitar loops
+
+  // Buscar conversación cuando cambien las conversaciones (solo si viene de navegación Kanban)
   useEffect(() => {
     if (!navigationProcessed || allConversations.length === 0) return;
     
     const contactParam = getParam('contact');
     if (!contactParam) return;
     
+    // Solo ejecutar si aún no hemos seleccionado una conversación
     if (selectedConversation) return;
     
     console.log('Searching for conversation after conversations loaded');
@@ -140,28 +141,24 @@ export const useCRMState = () => {
       if (!isBlocked) {
         console.log('Late selecting conversation:', targetConversation.id);
         setSelectedConversation(targetConversation);
+        // No mostrar toast aquí para evitar duplicados
       }
     }
+    
   }, [allConversations, conversations, navigationProcessed, selectedConversation, getParam]);
 
   const handleMessageSent = useCallback(async (message: string) => {
     if (selectedConversation) {
-      try {
-        crmHandleMessageSent(message);
-        await updateConversationAfterSend(selectedConversation, message);
-      } catch (error) {
-        console.error('Error handling message sent:', error);
-      }
+      // Usar el handler del CRM que actualiza la UI inmediatamente
+      crmHandleMessageSent(message);
+      // También actualizar la conversación
+      await updateConversationAfterSend(selectedConversation, message);
     }
   }, [selectedConversation, crmHandleMessageSent, updateConversationAfterSend]);
 
   const handleLoadMoreMessages = useCallback(() => {
     if (selectedConversation && loadMoreMessages) {
-      try {
-        loadMoreMessages();
-      } catch (error) {
-        console.error('Error loading more messages:', error);
-      }
+      loadMoreMessages(selectedConversation);
     }
   }, [selectedConversation, loadMoreMessages]);
 

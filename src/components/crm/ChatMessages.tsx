@@ -2,7 +2,7 @@
 import { useEffect, useRef, useCallback } from "react";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { MessageBubble } from "./MessageBubble";
-import { Message } from "@/types/crm";
+import { Message } from "@/hooks/useCRMData";
 import { Button } from "@/components/ui/button";
 import { ArrowUp } from "lucide-react";
 
@@ -30,16 +30,7 @@ export const ChatMessages = ({
   const previousScrollHeight = useRef<number>(0);
   const isLoadingMoreRef = useRef<boolean>(false);
 
-  console.log('💬 ChatMessages render:', { 
-    messagesCount: messages.length, 
-    hasMoreMessages, 
-    loadingMore,
-    isAtMessageLimit,
-    firstMessage: messages[0]?.mensaje?.substring(0, 30),
-    lastMessage: messages[messages.length - 1]?.mensaje?.substring(0, 30)
-  });
-
-  // Mostrar mensaje de límite si es necesario
+  // Si está en el límite de mensajes, mostrar mensaje informativo simple SIN alerta
   if (isAtMessageLimit && messageUsage) {
     return (
       <div className="h-full p-4 flex flex-col justify-center">
@@ -52,24 +43,28 @@ export const ChatMessages = ({
     );
   }
 
+  // Handle scroll para cargar más mensajes
   const handleScroll = useCallback((event: React.UIEvent<HTMLDivElement>) => {
     const scrollElement = event.currentTarget;
     const { scrollTop } = scrollElement;
     
+    // Si llegamos al top y hay más mensajes, cargar más
     if (scrollTop === 0 && hasMoreMessages && onLoadMore && !loadingMore && !isLoadingMoreRef.current) {
-      console.log('⬆️ Loading more messages...');
+      console.log('Loading more messages...');
       isLoadingMoreRef.current = true;
       previousScrollHeight.current = scrollElement.scrollHeight;
       onLoadMore();
     }
   }, [hasMoreMessages, onLoadMore, loadingMore]);
 
+  // Restaurar posición de scroll después de cargar más mensajes
   useEffect(() => {
     if (loadingMore === false && isLoadingMoreRef.current && scrollAreaRef.current) {
       const scrollElement = scrollAreaRef.current;
       const newScrollHeight = scrollElement.scrollHeight;
       const heightDifference = newScrollHeight - previousScrollHeight.current;
       
+      // Mantener la posición relativa del scroll
       scrollElement.scrollTop = heightDifference;
       isLoadingMoreRef.current = false;
     }
@@ -79,6 +74,7 @@ export const ChatMessages = ({
     <div className="h-full relative">
       <ScrollArea className="h-full" ref={scrollAreaRef} onScroll={handleScroll}>
         <div className="p-2 sm:p-4 space-y-4 min-h-full">
+          {/* Botón para cargar más mensajes */}
           {hasMoreMessages && (
             <div className="flex justify-center py-2">
               <Button
@@ -105,10 +101,7 @@ export const ChatMessages = ({
 
           {messages.length === 0 ? (
             <div className="h-full flex items-center justify-center text-muted-foreground">
-              <div className="text-center">
-                <p className="text-lg font-medium mb-2">No hay mensajes</p>
-                <p className="text-sm">Esta conversación no tiene mensajes aún</p>
-              </div>
+              <p>No hay mensajes en esta conversación</p>
             </div>
           ) : (
             <>

@@ -1,145 +1,116 @@
 
-import React, { useState, useRef, useEffect } from "react";
+import { useState, useRef } from "react";
 import { Button } from "@/components/ui/button";
-import { Textarea } from "@/components/ui/textarea";
-import { Card } from "@/components/ui/card";
 import { Conversation } from "@/types/crm";
-import { useQuickReplies } from "@/hooks/crm/useQuickReplies";
-import { MessageInputActions } from "./MessageInputActions";
+import { useConversationLimits } from "@/hooks/useConversationLimits";
+import { ConversationBlockedAlert } from "./ConversationBlockedAlert";
 import { MessageInputField } from "./MessageInputField";
-import { QuickRepliesSelector } from "./QuickRepliesSelector";
-import { SmartTemplateSelector } from "./SmartTemplateSelector";
-import { CollaborationIndicator } from "./CollaborationIndicator";
-import { useConversationCollaboration } from "@/hooks/useConversationCollaboration";
-import { Send } from "lucide-react";
+import { MessageInputActions } from "./MessageInputActions";
+import { SendButton } from "./SendButton";
+import { useMessageSender } from "@/hooks/crm/useMessageSender";
 
 interface MessageInputProps {
-  onSendMessage: (message: string) => void;
-  selectedConversation: Conversation | null;
-  disabled?: boolean;
+  conversation: Conversation;
+  onMessageSent?: (message: string) => void;
+  updateConversationAfterSend?: (conversation: Conversation, message: string) => Promise<void>;
 }
 
-const MessageInput = ({ onSendMessage, selectedConversation, disabled }: MessageInputProps) => {
+export const MessageInput = ({ 
+  conversation, 
+  onMessageSent,
+  updateConversationAfterSend 
+}: MessageInputProps) => {
   const [message, setMessage] = useState("");
-  const [isTyping, setIsTyping] = useState(false);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
-  const { quickReplies } = useQuickReplies();
-  
-  const { updateTypingStatus } = useConversationCollaboration(
-    selectedConversation?.id || ''
-  );
+  const { isConversationBlocked } = useConversationLimits();
+  const { sendMessage, sending } = useMessageSender({ 
+    conversation, 
+    onMessageSent,
+    updateConversationAfterSend 
+  });
 
-  // Handle typing indicator
-  useEffect(() => {
-    if (!selectedConversation) return;
+  const isBlocked = isConversationBlocked(conversation.id);
 
-    const timeoutId = setTimeout(() => {
-      if (isTyping) {
-        updateTypingStatus(false);
-        setIsTyping(false);
+  const focusTextarea = () => {
+    setTimeout(() => {
+      if (textareaRef.current) {
+        textareaRef.current.focus();
       }
-    }, 3000);
-
-    return () => clearTimeout(timeoutId);
-  }, [message, isTyping, selectedConversation, updateTypingStatus]);
-
-  const handleInputChange = (value: string) => {
-    setMessage(value);
-    
-    if (!isTyping && value.trim()) {
-      setIsTyping(true);
-      updateTypingStatus(true);
-    } else if (isTyping && !value.trim()) {
-      setIsTyping(false);
-      updateTypingStatus(false);
-    }
+    }, 100);
   };
 
-  const handleSend = () => {
-    if (message.trim() && !disabled) {
-      onSendMessage(message.trim());
+  const handleEmojiSelect = (emoji: string) => {
+    if (isBlocked) return;
+    setMessage(prev => prev + emoji);
+    focusTextarea();
+  };
+
+  const handleQuickReplySelect = (quickReplyMessage: string) => {
+    if (isBlocked) return;
+    setMessage(quickReplyMessage);
+    focusTextarea();
+  };
+
+  const handleSendMessage = async () => {
+    if (!message.trim() || sending || isBlocked) return;
+
+    const messageText = message.trim();
+    
+    try {
+      // Limpiar el input inmediatamente para mejor UX
       setMessage("");
-      setIsTyping(false);
-      updateTypingStatus(false);
+      
+      await sendMessage(messageText);
+      
+      // Enfocar el textarea después de enviar el mensaje
+      focusTextarea();
+    } catch (error) {
+      // Restaurar el mensaje en caso de error
+      setMessage(messageText);
+      
+      // Enfocar el textarea incluso si hay error
+      focusTextarea();
     }
   };
 
   const handleKeyPress = (e: React.KeyboardEvent) => {
-    if (e.key === "Enter" && !e.shiftKey) {
+    if (e.key === 'Enter' && !e.shiftKey && !isBlocked) {
       e.preventDefault();
-      handleSend();
+      handleSendMessage();
     }
   };
 
-  const handleQuickReply = (quickReply: string) => {
-    setMessage(quickReply);
-    textareaRef.current?.focus();
-  };
-
-  const handleTemplateSelect = (template: string) => {
-    setMessage(template);
-    textareaRef.current?.focus();
-  };
-
-  const handleEmojiSelect = (emoji: string) => {
-    setMessage(prev => prev + emoji);
-    textareaRef.current?.focus();
-  };
-
-  if (!selectedConversation) {
-    return null;
+  if (isBlocked) {
+    return <ConversationBlockedAlert />;
   }
 
   return (
-    <Card className="p-4 space-y-3">
-      {/* Collaboration indicator */}
-      <CollaborationIndicator conversationId={selectedConversation.id} />
+    <div className="flex items-end space-x-2">
+      {/* Desktop attachment button - hidden on mobile */}
+      <Button variant="ghost" size="icon" className="shrink-0 mb-2 hidden md:flex">
+        <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.172 7l-6.586 6.586a2 2 0 102.828 2.828l6.414-6.586a4 4 0 00-5.656-5.656l-6.415 6.585a6 6 0 108.486 8.486L20.5 13" />
+        </svg>
+      </Button>
       
-      {/* Quick replies */}
-      {quickReplies.length > 0 && (
-        <QuickRepliesSelector onSelectReply={handleQuickReply} />
-      )}
-
-      {/* Message input */}
-      <div className="flex gap-2">
-        <div className="flex-1 space-y-2">
-          <Textarea
-            ref={textareaRef}
-            value={message}
-            onChange={(e) => handleInputChange(e.target.value)}
-            onKeyPress={handleKeyPress}
-            placeholder="Escribe tu mensaje..."
-            className="min-h-[80px] resize-none"
-            disabled={disabled}
-          />
-        </div>
-        
-        <div className="flex flex-col gap-2">
-          {/* Smart template selector */}
-          <SmartTemplateSelector
-            onSelectTemplate={handleTemplateSelect}
-            contextMessage={message}
-            expertiseArea="general"
-          />
-          
-          {/* Message actions */}
-          <MessageInputActions 
-            onEmojiSelect={handleEmojiSelect}
-            onQuickReplySelect={handleQuickReply}
-          />
-          
-          {/* Send button */}
-          <Button
-            onClick={handleSend}
-            disabled={!message.trim() || disabled}
-            size="sm"
-          >
-            <Send className="h-4 w-4" />
-          </Button>
-        </div>
+      <div className="flex-1 relative">
+        <MessageInputField
+          ref={textareaRef}
+          value={message}
+          onChange={setMessage}
+          onKeyPress={handleKeyPress}
+          disabled={sending}
+        />
+        <MessageInputActions
+          onEmojiSelect={handleEmojiSelect}
+          onQuickReplySelect={handleQuickReplySelect}
+        />
       </div>
-    </Card>
+
+      <SendButton 
+        onClick={handleSendMessage}
+        disabled={!message.trim() || sending}
+      />
+    </div>
   );
 };
-
-export default MessageInput;

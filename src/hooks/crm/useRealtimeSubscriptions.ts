@@ -8,7 +8,7 @@ interface UseRealtimeSubscriptionsProps {
   selectedInstanceId?: string;
   selectedConversation: Conversation | null;
   fetchConversations: () => void;
-  fetchMessages: (conversation: Conversation) => void;
+  fetchMessages: (conversation: Conversation) => Promise<void>;
 }
 
 export const useRealtimeSubscriptions = ({
@@ -18,136 +18,175 @@ export const useRealtimeSubscriptions = ({
   fetchConversations,
   fetchMessages
 }: UseRealtimeSubscriptionsProps) => {
-  const conversationsChannelRef = useRef<any>(null);
-  const messagesChannelRef = useRef<any>(null);
-  const isSubscribedRef = useRef({ conversations: false, messages: false });
+  const conversationDebounceRef = useRef<NodeJS.Timeout | null>(null);
+  const messageDebounceRef = useRef<NodeJS.Timeout | null>(null);
 
-  // Conversaciones subscription
+  // Debounced functions para evitar múltiples llamadas
+  const debouncedFetchConversations = (delay: number = 200) => {
+    if (conversationDebounceRef.current) {
+      clearTimeout(conversationDebounceRef.current);
+    }
+    
+    conversationDebounceRef.current = setTimeout(() => {
+      console.log('Debounced: Refreshing conversations...');
+      fetchConversations();
+    }, delay);
+  };
+
+  const debouncedFetchMessages = (conversation: Conversation, delay: number = 100) => {
+    if (messageDebounceRef.current) {
+      clearTimeout(messageDebounceRef.current);
+    }
+    
+    messageDebounceRef.current = setTimeout(() => {
+      console.log('Debounced: Refreshing messages for conversation:', conversation.id);
+      fetchMessages(conversation);
+    }, delay);
+  };
+
   useEffect(() => {
-    if (!userData) {
-      console.log('No user data, skipping conversations subscription');
-      return;
-    }
+    if (!userData) return;
 
-    // Cleanup existing subscription
-    if (conversationsChannelRef.current) {
-      console.log('Cleaning up existing conversations channel');
-      supabase.removeChannel(conversationsChannelRef.current);
-      conversationsChannelRef.current = null;
-      isSubscribedRef.current.conversations = false;
-    }
+    console.log('Setting up real-time subscriptions for incoming messages...');
 
-    // Only create new subscription if not already subscribed
-    if (!isSubscribedRef.current.conversations) {
-      console.log('Setting up conversations realtime subscription');
+    // Suscripción para cambios en conversaciones
+    const conversationsChannel = supabase
+      .channel('conversations-realtime-live')
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'conversaciones'
+        },
+        (payload) => {
+          console.log('Conversation change detected:', payload.eventType, payload);
+          // Actualizar conversaciones inmediatamente para mensajes entrantes
+          debouncedFetchConversations(100);
+        }
+      )
+      .subscribe();
+
+    // Suscripción crítica para mensajes entrantes
+    const messagesChannel = supabase
+      .channel('messages-realtime-live')
+      .on(
+        'postgres_changes',
+        {
+          event: 'INSERT',
+          schema: 'public',
+          table: 'mensajes'
+        },
+        (payload) => {
+          console.log('New incoming message detected:', payload);
+          
+          const newMessage = payload.new as any;
+          
+          // CRÍTICO: Actualizar conversaciones inmediatamente para nuevos mensajes
+          debouncedFetchConversations(50);
+          
+          // Si estamos viendo esta conversación, actualizar mensajes inmediatamente
+          if (selectedConversation && newMessage?.conversation_id === selectedConversation.id) {
+            console.log('Updating messages for current conversation - INCOMING MESSAGE');
+            debouncedFetchMessages(selectedConversation, 50);
+          }
+        }
+      )
+      .on(
+        'postgres_changes',
+        {
+          event: 'UPDATE',
+          schema: 'public',
+          table: 'mensajes'
+        },
+        (payload) => {
+          console.log('Message updated:', payload);
+          
+          const updatedMessage = payload.new as any;
+          
+          // Si estamos viendo esta conversación, actualizar mensajes
+          if (selectedConversation && updatedMessage?.conversation_id === selectedConversation.id) {
+            console.log('Updating messages for current conversation - MESSAGE UPDATE');
+            debouncedFetchMessages(selectedConversation, 50);
+          }
+        }
+      )
+      .subscribe();
+
+    // Suscripción para cambios en la tabla contactos_bots
+    const botStatusChannel = supabase
+      .channel('bot-status-realtime-live')
+      .on(
+        'postgres_changes',
+        {
+          event: 'INSERT',
+          schema: 'public',
+          table: 'contactos_bots'
+        },
+        (payload) => {
+          console.log('Bot status INSERT detected:', payload);
+          
+          const payloadNew = payload.new as any;
+          const numeroContacto = payloadNew?.numero_contacto;
+          const instanciaNombre = payloadNew?.instancia_nombre;
+          
+          if (numeroContacto && instanciaNombre) {
+            // INSERT = bot desactivado
+            window.dispatchEvent(new CustomEvent('bot-status-changed', { 
+              detail: { 
+                numero_contacto: numeroContacto,
+                instancia_nombre: instanciaNombre,
+                bot_activo: false
+              } 
+            }));
+          }
+        }
+      )
+      .on(
+        'postgres_changes',
+        {
+          event: 'DELETE',
+          schema: 'public',
+          table: 'contactos_bots'
+        },
+        (payload) => {
+          console.log('Bot status DELETE detected:', payload);
+          
+          const payloadOld = payload.old as any;
+          const numeroContacto = payloadOld?.numero_contacto;
+          const instanciaNombre = payloadOld?.instancia_nombre;
+          
+          if (numeroContacto && instanciaNombre) {
+            // DELETE = bot activado
+            window.dispatchEvent(new CustomEvent('bot-status-changed', { 
+              detail: { 
+                numero_contacto: numeroContacto,
+                instancia_nombre: instanciaNombre,
+                bot_activo: true
+              } 
+            }));
+          }
+        }
+      )
+      .subscribe();
+
+    console.log('Real-time subscriptions active for immediate message updates');
+
+    return () => {
+      console.log('Cleaning up real-time subscriptions');
       
-      conversationsChannelRef.current = supabase
-        .channel(`conversaciones-changes-${Date.now()}`) // Unique channel name
-        .on(
-          'postgres_changes',
-          {
-            event: '*',
-            schema: 'public',
-            table: 'conversaciones'
-          },
-          (payload) => {
-            console.log('Conversaciones change detected:', payload);
-            // Refrescar conversaciones después de un breve delay
-            setTimeout(() => fetchConversations(), 500);
-          }
-        )
-        .subscribe((status) => {
-          console.log('Conversations subscription status:', status);
-          if (status === 'SUBSCRIBED') {
-            isSubscribedRef.current.conversations = true;
-          }
-        });
-    }
-
-    return () => {
-      if (conversationsChannelRef.current) {
-        console.log('Cleanup: removing conversations channel');
-        supabase.removeChannel(conversationsChannelRef.current);
-        conversationsChannelRef.current = null;
-        isSubscribedRef.current.conversations = false;
+      // Limpiar timeouts
+      if (conversationDebounceRef.current) {
+        clearTimeout(conversationDebounceRef.current);
       }
+      if (messageDebounceRef.current) {
+        clearTimeout(messageDebounceRef.current);
+      }
+      
+      // Remover canales
+      supabase.removeChannel(conversationsChannel);
+      supabase.removeChannel(messagesChannel);
+      supabase.removeChannel(botStatusChannel);
     };
-  }, [userData, selectedInstanceId, fetchConversations]);
-
-  // Mensajes subscription
-  useEffect(() => {
-    // Cleanup messages subscription if no conversation selected
-    if (!userData || !selectedConversation) {
-      if (messagesChannelRef.current) {
-        console.log('Cleaning up messages channel - no conversation');
-        supabase.removeChannel(messagesChannelRef.current);
-        messagesChannelRef.current = null;
-        isSubscribedRef.current.messages = false;
-      }
-      return;
-    }
-
-    // Cleanup existing subscription
-    if (messagesChannelRef.current) {
-      console.log('Cleaning up existing messages channel');
-      supabase.removeChannel(messagesChannelRef.current);
-      messagesChannelRef.current = null;
-      isSubscribedRef.current.messages = false;
-    }
-
-    // Only create new subscription if not already subscribed
-    if (!isSubscribedRef.current.messages) {
-      console.log('Setting up messages realtime subscription for conversation:', selectedConversation.id);
-
-      messagesChannelRef.current = supabase
-        .channel(`mensajes-${selectedConversation.id}-${Date.now()}`) // Unique channel name
-        .on(
-          'postgres_changes',
-          {
-            event: '*',
-            schema: 'public',
-            table: 'mensajes',
-            filter: `conversation_id=eq.${selectedConversation.id}`
-          },
-          (payload) => {
-            console.log('Messages change detected:', payload);
-            // Refrescar mensajes y conversaciones después de un breve delay
-            setTimeout(() => {
-              fetchMessages(selectedConversation);
-              fetchConversations();
-            }, 500);
-          }
-        )
-        .subscribe((status) => {
-          console.log('Messages subscription status:', status);
-          if (status === 'SUBSCRIBED') {
-            isSubscribedRef.current.messages = true;
-          }
-        });
-    }
-
-    return () => {
-      if (messagesChannelRef.current) {
-        console.log('Cleanup: removing messages channel');
-        supabase.removeChannel(messagesChannelRef.current);
-        messagesChannelRef.current = null;
-        isSubscribedRef.current.messages = false;
-      }
-    };
-  }, [userData, selectedConversation, fetchMessages, fetchConversations]);
-
-  // Cleanup on unmount
-  useEffect(() => {
-    return () => {
-      console.log('Component unmount: cleaning up all channels');
-      if (conversationsChannelRef.current) {
-        supabase.removeChannel(conversationsChannelRef.current);
-        isSubscribedRef.current.conversations = false;
-      }
-      if (messagesChannelRef.current) {
-        supabase.removeChannel(messagesChannelRef.current);
-        isSubscribedRef.current.messages = false;
-      }
-    };
-  }, []);
+  }, [userData, selectedInstanceId, selectedConversation?.id, fetchConversations, fetchMessages]);
 };

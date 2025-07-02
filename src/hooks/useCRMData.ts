@@ -13,10 +13,10 @@ export const useCRMData = (selectedInstanceId?: string) => {
   const [selectedConversation, setSelectedConversation] = useState<Conversation | null>(null);
   const previousInstanceId = useRef<string | undefined>(undefined);
 
-  console.log('🏠 useCRMData render:', {
-    userData: !!userData,
+  console.log('useCRMData Debug:', {
+    userData,
     selectedInstanceId,
-    selectedConversationId: selectedConversation?.id
+    hasUserData: !!userData
   });
 
   const {
@@ -43,18 +43,19 @@ export const useCRMData = (selectedInstanceId?: string) => {
 
   // Callbacks optimizados para tiempo real
   const realtimeFetchConversations = useCallback(() => {
-    console.log('🔄 Real-time: Refreshing conversations');
+    console.log('Real-time: Refreshing conversations immediately');
     refreshConversations();
   }, [refreshConversations]);
 
   const realtimeFetchMessages = useCallback(async (conversation: Conversation) => {
-    console.log('🔄 Real-time: Refreshing messages for conversation:', conversation.id);
+    console.log('Real-time: Refreshing messages immediately for conversation:', conversation.id);
     if (selectedConversation?.id === conversation.id) {
-      await refreshMessages(conversation);
+      // Usar fetchMessages sin cache para obtener datos frescos
+      await fetchMessages(conversation, 0, false);
     }
-  }, [selectedConversation, refreshMessages]);
+  }, [selectedConversation, fetchMessages]);
 
-  // Real-time subscriptions
+  // Real-time subscriptions optimizadas
   useRealtimeSubscriptions({
     userData,
     selectedInstanceId,
@@ -64,61 +65,40 @@ export const useCRMData = (selectedInstanceId?: string) => {
   });
 
   // Handler para cambiar la conversación seleccionada
-  const handleSetSelectedConversation = useCallback(async (conversation: Conversation | null) => {
-    console.log('🎯 Setting selected conversation:', conversation?.id);
+  const handleSetSelectedConversation = useCallback((conversation: Conversation | null) => {
+    console.log('Setting selected conversation:', conversation?.id);
     
-    if (conversation?.id === selectedConversation?.id) {
-      console.log('⚠️ Same conversation selected, skipping');
-      return;
-    }
-    
-    // Limpiar mensajes primero
-    clearMessages();
-    
-    // Establecer la conversación seleccionada
     setSelectedConversation(conversation);
     
+    // Si hay una conversación seleccionada, cargar sus mensajes (con cache)
     if (conversation) {
-      console.log('📨 Loading messages for conversation:', conversation.id);
-      try {
-        // Cargar mensajes para la nueva conversación
-        await fetchMessages(conversation, 0, false);
-        console.log('✅ Messages loaded successfully');
-      } catch (error) {
-        console.error('❌ Error loading messages:', error);
-      }
+      console.log('Loading messages for conversation:', conversation.id);
+      fetchMessages(conversation);
+    } else {
+      // Si no hay conversación seleccionada, limpiar mensajes
+      clearMessages();
     }
-  }, [selectedConversation?.id, fetchMessages, clearMessages]);
+  }, [fetchMessages, clearMessages]);
 
   // Handler para mensajes enviados
   const handleMessageSent = useCallback((messageText: string) => {
-    console.log('📤 Message sent:', messageText);
     if (selectedConversation) {
       addMessageToChat(selectedConversation, messageText);
-      updateConversationAfterSend(selectedConversation, messageText);
     }
-  }, [selectedConversation, addMessageToChat, updateConversationAfterSend]);
+  }, [selectedConversation, addMessageToChat]);
 
   // Limpiar conversación seleccionada cuando cambia la instancia
   useEffect(() => {
     if (previousInstanceId.current !== selectedInstanceId) {
-      console.log('🔄 Instance changed, clearing selected conversation');
+      console.log('Instance changed, clearing selected conversation');
       setSelectedConversation(null);
       clearMessages();
       previousInstanceId.current = selectedInstanceId;
     }
   }, [selectedInstanceId, clearMessages]);
 
+  // El loading general solo debe incluir la carga de conversaciones
   const loading = conversationsLoading;
-
-  console.log('🏠 useCRMData return values:', {
-    conversationsCount: conversations.length,
-    messagesCount: messages.length,
-    selectedConversationId: selectedConversation?.id,
-    loading,
-    messagesLoading,
-    hasMoreMessages
-  });
 
   return {
     conversations,
@@ -129,12 +109,12 @@ export const useCRMData = (selectedInstanceId?: string) => {
     messagesLoading,
     hasMoreMessages,
     fetchConversations,
-    fetchMessages: (conversation: Conversation) => fetchMessages(conversation, 0, false),
+    fetchMessages,
     loadMoreMessages,
     markAsRead,
     updateConversationAfterSend,
     handleMessageSent,
     refreshConversations,
-    refreshMessages: () => selectedConversation ? refreshMessages(selectedConversation) : Promise.resolve()
+    refreshMessages
   };
 };
