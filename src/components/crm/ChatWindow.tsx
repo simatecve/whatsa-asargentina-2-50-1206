@@ -32,10 +32,12 @@ export const ChatWindow = ({
     selectedConversation: selectedConversation?.id, 
     messagesCount: messages.length,
     loading,
-    messagesLoading 
+    messagesLoading,
+    hasMessages: messages.length > 0
   });
 
   if (!selectedConversation) {
+    console.log('ChatWindow: No conversation selected');
     return (
       <div className="h-full flex items-center justify-center text-muted-foreground">
         <p>Selecciona una conversación para comenzar</p>
@@ -75,6 +77,13 @@ export const ChatWindow = ({
   };
 
   const displayName = getDisplayName();
+
+  console.log('ChatWindow: Rendering with', {
+    displayName,
+    messagesCount: messages.length,
+    hasMoreMessages,
+    messagesLoading
+  });
 
   return (
     <div className="flex flex-col h-full overflow-hidden">
@@ -120,14 +129,23 @@ export const ChatWindow = ({
 
       {/* Messages area - this should take the remaining space */}
       <div className="flex-1 min-h-0 pt-20 md:pt-0 overflow-hidden py-[6px]">
-        <ChatMessages 
-          messages={messages} 
-          messagesEndRef={messagesEndRef} 
-          scrollAreaRef={scrollAreaRef} 
-          hasMoreMessages={hasMoreMessages}
-          onLoadMore={onLoadMore}
-          loadingMore={messagesLoading}
-        />
+        {messagesLoading && messages.length === 0 ? (
+          <div className="h-full flex items-center justify-center text-muted-foreground">
+            <div className="flex items-center">
+              <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-gray-600 mr-3"></div>
+              Cargando mensajes...
+            </div>
+          </div>
+        ) : (
+          <ChatMessages 
+            messages={messages} 
+            messagesEndRef={messagesEndRef} 
+            scrollAreaRef={scrollAreaRef} 
+            hasMoreMessages={hasMoreMessages}
+            onLoadMore={onLoadMore}
+            loadingMore={messagesLoading}
+          />
+        )}
       </div>
 
       {/* Message input - fixed at bottom */}

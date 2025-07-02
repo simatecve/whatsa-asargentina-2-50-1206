@@ -65,17 +65,24 @@ export const useCRMData = (selectedInstanceId?: string) => {
   });
 
   // Handler para cambiar la conversación seleccionada
-  const handleSetSelectedConversation = useCallback((conversation: Conversation | null) => {
+  const handleSetSelectedConversation = useCallback(async (conversation: Conversation | null) => {
     console.log('Setting selected conversation:', conversation?.id);
     
     setSelectedConversation(conversation);
     
-    // Si hay una conversación seleccionada, cargar sus mensajes (con cache)
+    // Si hay una conversación seleccionada, cargar sus mensajes inmediatamente
     if (conversation) {
       console.log('Loading messages for conversation:', conversation.id);
-      fetchMessages(conversation);
+      try {
+        // Forzar carga inmediata sin cache
+        await fetchMessages(conversation, 0, false);
+        console.log('Messages loaded successfully for conversation:', conversation.id);
+      } catch (error) {
+        console.error('Error loading messages for conversation:', conversation.id, error);
+      }
     } else {
       // Si no hay conversación seleccionada, limpiar mensajes
+      console.log('No conversation selected, clearing messages');
       clearMessages();
     }
   }, [fetchMessages, clearMessages]);

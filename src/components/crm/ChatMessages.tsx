@@ -34,7 +34,8 @@ export const ChatMessages = ({
     messagesCount: messages.length, 
     hasMoreMessages, 
     loadingMore,
-    isAtMessageLimit 
+    isAtMessageLimit,
+    firstMessage: messages[0]?.mensaje?.substring(0, 50)
   });
 
   // Si está en el límite de mensajes, mostrar mensaje informativo simple SIN alerta
@@ -108,7 +109,10 @@ export const ChatMessages = ({
 
           {messages.length === 0 ? (
             <div className="h-full flex items-center justify-center text-muted-foreground">
-              <p>No hay mensajes en esta conversación</p>
+              <div className="text-center">
+                <p className="text-lg font-medium mb-2">No hay mensajes</p>
+                <p className="text-sm">Esta conversación no tiene mensajes aún</p>
+              </div>
             </div>
           ) : (
             <>
