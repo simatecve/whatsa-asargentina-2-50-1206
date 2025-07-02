@@ -5,7 +5,7 @@ import { UserProfile } from "@/components/UserProfile";
 import { supabase } from "@/integrations/supabase/client";
 import { Card } from "@/components/ui/card";
 import { toast } from "sonner";
-import { Send, Package, AlertTriangle, Sparkles, TrendingUp, Users, MessageSquare } from "lucide-react";
+import { Send, Package, AlertTriangle, Sparkles, TrendingUp, Users, MessageSquare, BarChart } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { format } from "date-fns";
 import { useDashboardStats } from "@/hooks/useDashboardStats";
