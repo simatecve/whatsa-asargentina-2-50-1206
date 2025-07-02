@@ -63,7 +63,7 @@ export const useCRMData = (selectedInstanceId?: string) => {
     fetchMessages: realtimeFetchMessages
   });
 
-  // Handler para cambiar la conversación seleccionada - CORREGIDO
+  // Handler para cambiar la conversación seleccionada
   const handleSetSelectedConversation = useCallback(async (conversation: Conversation | null) => {
     console.log('🎯 Setting selected conversation:', conversation?.id);
     
@@ -86,7 +86,6 @@ export const useCRMData = (selectedInstanceId?: string) => {
         console.log('✅ Messages loaded successfully');
       } catch (error) {
         console.error('❌ Error loading messages:', error);
-        // Don't block the UI if messages fail to load
       }
     }
   }, [selectedConversation?.id, fetchMessages, clearMessages]);

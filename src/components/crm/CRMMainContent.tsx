@@ -2,7 +2,6 @@
 import React from "react";
 import { ConversationList } from "./ConversationList";
 import { ChatWindow } from "./ChatWindow";
-import { InternalNotesPanel } from "./InternalNotesPanel";
 import { Conversation, Message } from "@/types/crm";
 
 interface CRMMainContentProps {
@@ -49,7 +48,7 @@ export const CRMMainContent = ({
       </div>
 
       {/* Chat Window */}
-      <div className="col-span-12 lg:col-span-5 xl:col-span-6">
+      <div className="col-span-12 lg:col-span-8 xl:col-span-9">
         <ChatWindow
           selectedConversation={selectedConversation}
           messages={messages}
@@ -58,13 +57,6 @@ export const CRMMainContent = ({
           onLoadMore={handleLoadMoreMessages}
           onMessageSent={handleMessageSent}
         />
-      </div>
-
-      {/* Internal Notes Panel */}
-      <div className="col-span-12 lg:col-span-3">
-        {selectedConversation && (
-          <InternalNotesPanel conversationId={selectedConversation.id} />
-        )}
       </div>
     </div>
   );
