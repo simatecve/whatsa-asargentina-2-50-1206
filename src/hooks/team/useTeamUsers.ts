@@ -15,11 +15,17 @@ export const useTeamUsers = () => {
         .eq('is_active', true)
         .order('created_at', { ascending: false });
 
-      if (error) throw error;
+      if (error) {
+        console.error('Error fetching team users:', error);
+        setTeamUsers([]);
+        return;
+      }
+      
       setTeamUsers(data || []);
     } catch (error) {
       console.error('Error fetching team users:', error);
-      toast.error('Error al cargar usuarios del equipo');
+      setTeamUsers([]);
+      // Don't show error toast for team users as it's not critical for CRM functionality
     }
   };
 

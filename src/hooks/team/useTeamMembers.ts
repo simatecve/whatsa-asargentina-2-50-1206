@@ -13,12 +13,16 @@ export const useTeamMembers = () => {
         .from('team_members')
         .select(`
           *,
-          team_user:team_users!team_members_member_user_id_fkey(*)
+          team_user:team_users!fk_team_members_member_user_id(*)
         `)
         .eq('is_active', true)
         .order('created_at', { ascending: false });
 
-      if (error) throw error;
+      if (error) {
+        console.error('Error fetching team members:', error);
+        setTeamMembers([]);
+        return;
+      }
       
       // Filter and type the results properly with proper null checking
       const validMembers: TeamMember[] = (data || [])
@@ -42,7 +46,8 @@ export const useTeamMembers = () => {
       setTeamMembers(validMembers);
     } catch (error) {
       console.error('Error fetching team members:', error);
-      toast.error('Error al cargar miembros del equipo');
+      setTeamMembers([]);
+      // Don't show error toast for team members as it's not critical for CRM functionality
     }
   };
 

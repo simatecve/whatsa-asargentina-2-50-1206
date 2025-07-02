@@ -86,6 +86,7 @@ export const useCRMData = (selectedInstanceId?: string) => {
         console.log('✅ Messages loaded successfully');
       } catch (error) {
         console.error('❌ Error loading messages:', error);
+        // Don't block the UI if messages fail to load
       }
     }
   }, [selectedConversation?.id, fetchMessages, clearMessages]);

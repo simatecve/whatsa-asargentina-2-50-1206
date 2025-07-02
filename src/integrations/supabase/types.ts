@@ -404,6 +404,20 @@ export type Database = {
             referencedRelation: "conversaciones"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "fk_conversation_assignments_assigned_by_user_id"
+            columns: ["assigned_by_user_id"]
+            isOneToOne: false
+            referencedRelation: "usuarios"
+            referencedColumns: ["user_id"]
+          },
+          {
+            foreignKeyName: "fk_conversation_assignments_assigned_to_user_id"
+            columns: ["assigned_to_user_id"]
+            isOneToOne: false
+            referencedRelation: "usuarios"
+            referencedColumns: ["user_id"]
+          },
         ]
       }
       conversation_collaborators: {
@@ -600,6 +614,13 @@ export type Database = {
           updated_at?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "fk_internal_notes_author_user_id"
+            columns: ["author_user_id"]
+            isOneToOne: false
+            referencedRelation: "usuarios"
+            referencedColumns: ["user_id"]
+          },
           {
             foreignKeyName: "internal_notes_author_user_id_fkey"
             columns: ["author_user_id"]
@@ -1220,6 +1241,20 @@ export type Database = {
           updated_at?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "fk_team_members_member_user_id"
+            columns: ["member_user_id"]
+            isOneToOne: false
+            referencedRelation: "team_users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "fk_team_members_owner_user_id"
+            columns: ["owner_user_id"]
+            isOneToOne: false
+            referencedRelation: "usuarios"
+            referencedColumns: ["user_id"]
+          },
           {
             foreignKeyName: "team_members_member_user_id_fkey"
             columns: ["member_user_id"]

@@ -12,7 +12,7 @@ export const useConversationAssignments = () => {
         .from('conversation_assignments')
         .select(`
           *,
-          assigned_to:team_users!conversation_assignments_assigned_to_user_id_fkey(nombre)
+          assigned_to:usuarios!fk_conversation_assignments_assigned_to_user_id(nombre)
         `)
         .order('assigned_at', { ascending: false });
 
@@ -21,7 +21,11 @@ export const useConversationAssignments = () => {
       }
 
       const { data, error } = await query;
-      if (error) throw error;
+      if (error) {
+        console.error('Error fetching assignments:', error);
+        setAssignments([]);
+        return;
+      }
 
       const formattedAssignments = (data || []).map(assignment => {
         let assigned_to_name = '';
@@ -43,6 +47,7 @@ export const useConversationAssignments = () => {
       setAssignments(formattedAssignments);
     } catch (error) {
       console.error('Error fetching assignments:', error);
+      setAssignments([]);
     }
   };
 

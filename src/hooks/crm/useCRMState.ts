@@ -54,7 +54,12 @@ export const useCRMState = () => {
   // Procesar conversaciones para determinar cuáles están bloqueadas
   useEffect(() => {
     if (allConversations.length > 0) {
-      processConversations(allConversations);
+      try {
+        processConversations(allConversations);
+      } catch (error) {
+        console.error('Error processing conversations limits:', error);
+        // Don't block the main functionality if conversation limits fail
+      }
     }
   }, [allConversations, processConversations]);
 
@@ -149,17 +154,26 @@ export const useCRMState = () => {
 
   const handleMessageSent = useCallback(async (message: string) => {
     if (selectedConversation) {
-      // Usar el handler del CRM que actualiza la UI inmediatamente
-      crmHandleMessageSent(message);
-      // También actualizar la conversación
-      await updateConversationAfterSend(selectedConversation, message);
+      try {
+        // Usar el handler del CRM que actualiza la UI inmediatamente
+        crmHandleMessageSent(message);
+        // También actualizar la conversación
+        await updateConversationAfterSend(selectedConversation, message);
+      } catch (error) {
+        console.error('Error handling message sent:', error);
+        // Don't block the UI if message handling fails
+      }
     }
   }, [selectedConversation, crmHandleMessageSent, updateConversationAfterSend]);
 
   const handleLoadMoreMessages = useCallback(() => {
-    // Corregir: loadMoreMessages no necesita argumentos
     if (selectedConversation && loadMoreMessages) {
-      loadMoreMessages();
+      try {
+        loadMoreMessages();
+      } catch (error) {
+        console.error('Error loading more messages:', error);
+        // Don't block the UI if loading more messages fails
+      }
     }
   }, [selectedConversation, loadMoreMessages]);
 

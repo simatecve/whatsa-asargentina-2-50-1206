@@ -13,12 +13,16 @@ export const useInternalNotes = () => {
         .from('internal_notes')
         .select(`
           *,
-          author:team_users!internal_notes_author_user_id_fkey(nombre)
+          author:usuarios!fk_internal_notes_author_user_id(nombre)
         `)
         .eq('conversation_id', conversationId)
         .order('created_at', { ascending: true });
 
-      if (error) throw error;
+      if (error) {
+        console.error('Error fetching internal notes:', error);
+        setInternalNotes([]);
+        return;
+      }
 
       const formattedNotes = (data || []).map(note => {
         let author_name = '';
@@ -40,6 +44,7 @@ export const useInternalNotes = () => {
       setInternalNotes(formattedNotes);
     } catch (error) {
       console.error('Error fetching internal notes:', error);
+      setInternalNotes([]);
     }
   };
 
