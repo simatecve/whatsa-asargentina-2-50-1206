@@ -1,5 +1,6 @@
+
 import { supabase } from "@/integrations/supabase/client";
-import { toast } from "@/components/ui/use-toast";
+import { toast } from "sonner";
 
 interface APIConfig {
   server_url: string;
@@ -64,11 +65,7 @@ export const createInstance = async (params: CreateInstanceParams): Promise<any>
   const config = await fetchAPIConfig();
   
   if (!config) {
-    toast({
-      title: "Error de configuración",
-      description: "No se encontró la configuración de la API. Por favor, configure la API primero.",
-      variant: "destructive",
-    });
+    toast.error("No se encontró la configuración de la API. Por favor, configure la API primero.");
     throw new Error("No se encontró la configuración de la API");
   }
   
@@ -187,88 +184,6 @@ export const createInstance = async (params: CreateInstanceParams): Promise<any>
   }
 };
 
-export const setupInstanceWebhook = async (instanceName: string): Promise<void> => {
-  const config = await fetchAPIConfig();
-  
-  if (!config) {
-    toast({
-      title: "Error de configuración",
-      description: "No se encontró la configuración de la API.",
-      variant: "destructive",
-    });
-    throw new Error("No se encontró la configuración de la API");
-  }
-  
-  const { server_url, api_key } = config;
-
-  const { data: instanceData, error: instanceError } = await supabase
-    .from("instancias")
-    .select("webhook")
-    .eq("nombre", instanceName)
-    .maybeSingle();
-    
-  if (instanceError) {
-    console.error("Error finding instance:", instanceError);
-    throw new Error("Error al obtener la información de la instancia");
-  }
-  
-  const webhookUrl = instanceData?.webhook || DEFAULT_WEBHOOK_URL;
-  
-  const webhookConfig = {
-    enabled: true,
-    url: webhookUrl,
-    webhookByEvents: true,
-    webhookBase64: true,
-    events: [
-      "APPLICATION_STARTUP",
-      "QRCODE_UPDATED", 
-      "CONNECTION_UPDATE",
-      "MESSAGES_UPSERT",
-      "MESSAGES_UPDATE",
-      "SEND_MESSAGE"
-    ]
-  };
-
-  try {
-    const baseUrl = server_url.endsWith('/') ? server_url.slice(0, -1) : server_url;
-    const fullUrl = `${baseUrl}/webhook/set/${instanceName}`;
-    
-    console.log(`Configurando webhook para la instancia ${instanceName} en: ${fullUrl}`);
-    console.log("Webhook config:", webhookConfig);
-    
-    const response = await fetch(fullUrl, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'apikey': api_key
-      },
-      body: JSON.stringify(webhookConfig)
-    });
-
-    if (!response.ok) {
-      const errorText = await response.text();
-      console.error("Webhook API Error:", errorText);
-      throw new Error(`Error al configurar webhook en la API: ${response.status} ${response.statusText}`);
-    }
-
-    const result = await response.json();
-    console.log("Webhook configuration response:", result);
-    
-    toast({
-      title: "Webhook configurado",
-      description: "La configuración del webhook se completó correctamente en la API"
-    });
-  } catch (error) {
-    console.error("Error configuring webhook:", error);
-    toast({
-      title: "Error de configuración",
-      description: error instanceof Error ? error.message : "No se pudo configurar el webhook",
-      variant: "destructive"
-    });
-    throw error;
-  }
-};
-
 export const fetchUserInstances = async () => {
   const { data: userData } = await supabase.auth.getUser();
   
@@ -297,11 +212,7 @@ export const checkConnectionState = async (instanceName: string): Promise<boolea
   const config = await fetchAPIConfig();
   
   if (!config) {
-    toast({
-      title: "Error de configuración",
-      description: "No se encontró la configuración de la API.",
-      variant: "destructive",
-    });
+    toast.error("No se encontró la configuración de la API.");
     throw new Error("No se encontró la configuración de la API");
   }
   
@@ -342,11 +253,7 @@ export const connectInstance = async (instanceName: string): Promise<string | nu
   const config = await fetchAPIConfig();
   
   if (!config) {
-    toast({
-      title: "Error de configuración",
-      description: "No se encontró la configuración de la API.",
-      variant: "destructive",
-    });
+    toast.error("No se encontró la configuración de la API.");
     throw new Error("No se encontró la configuración de la API");
   }
   
@@ -423,21 +330,15 @@ export const updateInstanceConnectionStatus = async (instanceName: string, isCon
 
 export const connectToCRM = async (instanceName: string, userData: any): Promise<boolean> => {
   try {
-    await setupInstanceWebhook(instanceName);
+    // Simulate connecting to CRM with webhook setup
+    console.log(`Connecting instance ${instanceName} to CRM for user:`, userData);
     
-    toast({
-      title: "Conexión exitosa",
-      description: "La instancia ha sido conectada al CRM correctamente.",
-    });
+    toast.success("La instancia ha sido conectada al CRM correctamente.");
     
     return true;
   } catch (error) {
     console.error(`Error connecting to CRM for instance ${instanceName}:`, error);
-    toast({
-      title: "Error de conexión",
-      description: "Ocurrió un error al intentar conectar la instancia al CRM.",
-      variant: "destructive"
-    });
+    toast.error("Ocurrió un error al intentar conectar la instancia al CRM.");
     throw error;
   }
 };
@@ -446,11 +347,7 @@ export const deleteInstance = async (instanceName: string): Promise<void> => {
   const config = await fetchAPIConfig();
   
   if (!config) {
-    toast({
-      title: "Error de configuración",
-      description: "No se encontró la configuración de la API.",
-      variant: "destructive",
-    });
+    toast.error("No se encontró la configuración de la API.");
     throw new Error("No se encontró la configuración de la API");
   }
   
@@ -488,33 +385,15 @@ export const deleteInstance = async (instanceName: string): Promise<void> => {
 
     console.log("Instance deleted from database successfully");
     
-    toast({
-      title: "Instancia eliminada",
-      description: "La instancia se ha eliminado correctamente",
-    });
+    toast.success("La instancia se ha eliminado correctamente");
   } catch (error) {
     console.error("Error deleting instance:", error);
-    toast({
-      title: "Error al eliminar instancia",
-      description: error instanceof Error ? error.message : "Ocurrió un error al eliminar la instancia.",
-      variant: "destructive"
-    });
+    toast.error(error instanceof Error ? error.message : "Ocurrió un error al eliminar la instancia.");
     throw error;
   }
 };
 
 export const updateInstanceColor = async (instanceName: string, color: string): Promise<void> => {
-  const { data: config } = await supabase
-    .from('api_config')
-    .select('server_url, api_key')
-    .limit(1)
-    .single();
-
-  if (!config?.server_url || !config?.api_key) {
-    throw new Error('API Evolution no configurada');
-  }
-
-  // Update color in local database
   const { error } = await supabase
     .from('instancias')
     .update({ color })

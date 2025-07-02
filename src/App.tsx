@@ -14,6 +14,7 @@ import AgenteIA from "@/pages/AgenteIA";
 import Analiticas from "@/pages/Analiticas";
 import NotFound from "@/pages/NotFound";
 import { Toaster } from "sonner";
+import { ConnectionProvider } from "@/contexts/ConnectionContext";
 
 // Admin pages
 import { AdminLayout } from "@/components/admin/AdminLayout";
@@ -29,7 +30,7 @@ import ConsumoTokens from "@/pages/admin/ConsumoTokens";
 
 function App() {
   return (
-    <>
+    <ConnectionProvider>
       <Toaster position="top-right" richColors />
       <Routes>
         <Route path="/" element={<Navigate to="/login" replace />} />
@@ -64,7 +65,7 @@ function App() {
         
         <Route path="*" element={<NotFound />} />
       </Routes>
-    </>
+    </ConnectionProvider>
   );
 }
 
