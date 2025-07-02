@@ -58,6 +58,7 @@ const CRM = () => {
           selectedConversation={selectedConversation}
           setSelectedConversation={setSelectedConversation}
           loading={loading}
+          messages={messages}
           messagesLoading={messagesLoading}
           hasMoreMessages={hasMoreMessages}
           handleLoadMoreMessages={handleLoadMoreMessages}

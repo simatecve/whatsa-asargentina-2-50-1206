@@ -3,13 +3,14 @@ import React from "react";
 import { ConversationList } from "./ConversationList";
 import { ChatWindow } from "./ChatWindow";
 import { InternalNotesPanel } from "./InternalNotesPanel";
-import { Conversation } from "@/types/crm";
+import { Conversation, Message } from "@/types/crm";
 
 interface CRMMainContentProps {
   conversations: Conversation[];
   selectedConversation: Conversation | null;
   setSelectedConversation: (conversation: Conversation | null) => void;
   loading: boolean;
+  messages: Message[];
   messagesLoading: boolean;
   hasMoreMessages: boolean;
   handleLoadMoreMessages: () => void;
@@ -21,6 +22,7 @@ export const CRMMainContent = ({
   selectedConversation,
   setSelectedConversation,
   loading,
+  messages,
   messagesLoading,
   hasMoreMessages,
   handleLoadMoreMessages,
@@ -43,6 +45,7 @@ export const CRMMainContent = ({
         {selectedConversation ? (
           <ChatWindow
             selectedConversation={selectedConversation}
+            messages={messages}
             loading={messagesLoading}
             hasMoreMessages={hasMoreMessages}
             onLoadMore={handleLoadMoreMessages}

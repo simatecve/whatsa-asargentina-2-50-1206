@@ -11,6 +11,7 @@ import { Conversation, Message } from "@/hooks/useCRMData";
 
 interface ChatWindowProps {
   selectedConversation: Conversation | null;
+  messages?: Message[];
   loading?: boolean;
   messagesLoading?: boolean;
   hasMoreMessages?: boolean;
@@ -20,6 +21,7 @@ interface ChatWindowProps {
 
 export const ChatWindow = ({
   selectedConversation,
+  messages = [],
   loading = false,
   messagesLoading = false,
   hasMoreMessages = false,
@@ -43,7 +45,7 @@ export const ChatWindow = ({
     scrollToBottom,
     handleCreateLead,
     handleUpdateLeadStatus
-  } = useChatWindowState(selectedConversation, []);
+  } = useChatWindowState(selectedConversation, messages);
 
   const handleMessageSent = useCallback((message: string) => {
     if (onMessageSent) {
@@ -99,7 +101,7 @@ export const ChatWindow = ({
       <div className="hidden md:block shrink-0">
         <ChatHeader 
           conversation={selectedConversation} 
-          messages={[]} 
+          messages={messages} 
           conversationLead={conversationLead} 
           loadingLead={loadingLead} 
           leadLoading={leadLoading} 
@@ -119,7 +121,7 @@ export const ChatWindow = ({
           </div>
         ) : (
           <ChatMessages 
-            messages={[]} 
+            messages={messages} 
             messagesEndRef={messagesEndRef} 
             scrollAreaRef={scrollAreaRef} 
             hasMoreMessages={hasMoreMessages}
