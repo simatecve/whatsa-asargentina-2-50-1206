@@ -17,16 +17,16 @@ export const useTeamManagement = () => {
     loading,
     error,
 
-    // Funciones vacías para mantener compatibilidad
+    // Funciones que aceptan parámetros pero no hacen nada para mantener compatibilidad
     fetchTeamUsers: () => Promise.resolve(),
     fetchTeamMembers: () => Promise.resolve(),
-    createTeamUser: () => Promise.resolve(),
-    updateTeamMember: () => Promise.resolve(),
-    removeTeamMember: () => Promise.resolve(),
+    createTeamUser: (userData: any) => Promise.resolve(),
+    updateTeamMember: (id: string, data: any) => Promise.resolve(),
+    removeTeamMember: (id: string) => Promise.resolve(),
     fetchAssignments: () => Promise.resolve(),
     fetchInternalNotes: () => Promise.resolve(),
     addInternalNote: () => Promise.resolve(),
     fetchSmartTemplates: () => Promise.resolve(),
-    addSmartTemplate: () => Promise.resolve()
+    addSmartTemplate: (templateData: any) => Promise.resolve()
   };
 };
