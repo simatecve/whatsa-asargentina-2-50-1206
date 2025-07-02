@@ -28,16 +28,17 @@ export const ChatWindow = ({
   onLoadMore,
   onMessageSent
 }: ChatWindowProps) => {
-  console.log('ChatWindow render:', { 
+  console.log('💬 ChatWindow render:', { 
     selectedConversation: selectedConversation?.id, 
     messagesCount: messages.length,
     loading,
     messagesLoading,
-    hasMessages: messages.length > 0
+    hasMessages: messages.length > 0,
+    firstMessage: messages[0]?.mensaje?.substring(0, 50)
   });
 
   if (!selectedConversation) {
-    console.log('ChatWindow: No conversation selected');
+    console.log('⚠️ ChatWindow: No conversation selected');
     return (
       <div className="h-full flex items-center justify-center text-muted-foreground">
         <p>Selecciona una conversación para comenzar</p>
@@ -57,37 +58,33 @@ export const ChatWindow = ({
   } = useChatWindowState(selectedConversation, messages);
 
   const handleMessageSent = useCallback((message: string) => {
-    console.log('Message sent in ChatWindow:', message);
+    console.log('📤 Message sent in ChatWindow:', message);
     if (onMessageSent) {
       onMessageSent(message);
     }
-    // Scroll to bottom after sending message
     setTimeout(() => scrollToBottom(), 100);
   }, [onMessageSent, scrollToBottom]);
 
-  // Función para obtener el nombre a mostrar, priorizando pushname SOLO de mensajes del contacto
   const getDisplayName = () => {
-    // Si no hay pushname en mensajes del contacto, usar el de la conversación
     if (selectedConversation.nombre_contacto && selectedConversation.nombre_contacto.trim() && selectedConversation.nombre_contacto !== 'undefined') {
       return selectedConversation.nombre_contacto;
     }
-
-    // Como último recurso, usar el número
     return selectedConversation.numero_contacto;
   };
 
   const displayName = getDisplayName();
 
-  console.log('ChatWindow: Rendering with', {
+  console.log('💬 ChatWindow: Final render with', {
     displayName,
     messagesCount: messages.length,
     hasMoreMessages,
-    messagesLoading
+    messagesLoading,
+    loading
   });
 
   return (
     <div className="flex flex-col h-full overflow-hidden">
-      {/* Mobile header - contact info and back button only */}
+      {/* Mobile header */}
       <div className="md:hidden fixed top-0 left-0 right-0 z-50 flex items-center justify-between p-4" style={{ backgroundColor: '#152763' }}>
         <div className="flex items-center flex-1">
           <Button 
@@ -114,7 +111,7 @@ export const ChatWindow = ({
         </div>
       </div>
 
-      {/* Desktop header - hidden on mobile */}
+      {/* Desktop header */}
       <div className="hidden md:block shrink-0">
         <ChatHeader 
           conversation={selectedConversation} 
@@ -127,9 +124,9 @@ export const ChatWindow = ({
         />
       </div>
 
-      {/* Messages area - this should take the remaining space */}
+      {/* Messages area */}
       <div className="flex-1 min-h-0 pt-20 md:pt-0 overflow-hidden py-[6px]">
-        {messagesLoading && messages.length === 0 ? (
+        {loading && messages.length === 0 ? (
           <div className="h-full flex items-center justify-center text-muted-foreground">
             <div className="flex items-center">
               <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-gray-600 mr-3"></div>
@@ -148,7 +145,7 @@ export const ChatWindow = ({
         )}
       </div>
 
-      {/* Message input - fixed at bottom */}
+      {/* Message input */}
       <div className="border-t bg-white p-3 md:p-4 shrink-0">
         <MessageInput 
           selectedConversation={selectedConversation} 

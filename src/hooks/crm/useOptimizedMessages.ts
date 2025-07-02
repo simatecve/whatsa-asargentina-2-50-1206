@@ -21,22 +21,26 @@ export const useOptimizedMessages = (setConversations: React.Dispatch<React.SetS
   } = useOptimizedCache();
 
   const fetchMessages = useCallback(async (conversation: Conversation, page: number = 0, useCache: boolean = true) => {
-    console.log('Starting fetchMessages for conversation:', conversation.id, 'page:', page);
+    console.log('🔍 fetchMessages called:', { 
+      conversationId: conversation.id, 
+      page, 
+      useCache,
+      currentMessages: messages.length 
+    });
     
-    // Prevenir múltiples fetches simultáneos para la misma conversación
-    if (currentConversationRef.current === conversation.id && loading && page === 0) {
-      console.log('Already fetching messages for this conversation');
-      return;
+    // Cancelar petición anterior
+    if (abortControllerRef.current) {
+      abortControllerRef.current.abort();
     }
 
-    // Si es página 0 (inicial), verificar cache
+    // Si es página 0, verificar cache primero
     if (page === 0) {
       currentConversationRef.current = conversation.id;
       
       if (useCache) {
         const cached = getCachedMessages(conversation.id);
         if (cached) {
-          console.log(`Using cached messages: ${cached.data.length} messages`);
+          console.log('📦 Using cached messages:', cached.data.length);
           setMessages(cached.data);
           setHasMoreMessages(cached.hasMore);
           setLoading(false);
@@ -49,15 +53,10 @@ export const useOptimizedMessages = (setConversations: React.Dispatch<React.SetS
     setLoading(true);
 
     try {
-      // Cancelar petición anterior
-      if (abortControllerRef.current) {
-        abortControllerRef.current.abort();
-      }
-
       abortControllerRef.current = new AbortController();
       const signal = abortControllerRef.current.signal;
 
-      console.log('Fetching messages for conversation:', conversation.id);
+      console.log('🔄 Fetching messages from DB for conversation:', conversation.id);
       
       const offset = page * MESSAGE_PAGE_SIZE;
       
@@ -69,29 +68,54 @@ export const useOptimizedMessages = (setConversations: React.Dispatch<React.SetS
         .range(offset, offset + MESSAGE_PAGE_SIZE - 1)
         .abortSignal(signal);
 
-      // Verificar si todavía es la conversación actual
       if (currentConversationRef.current !== conversation.id) {
-        console.log('Conversation changed during fetch, ignoring results');
+        console.log('⚠️ Conversation changed during fetch, ignoring results');
         return;
       }
 
       if (error) {
-        console.error('Error fetching messages from DB:', error);
-        throw error;
+        console.error('❌ Error fetching messages from DB:', error);
+        
+        // Fallback: intentar buscar por instancia y número
+        console.log('🔄 Trying fallback query...');
+        const { data: fallbackMessages, error: fallbackError } = await supabase
+          .from('mensajes')
+          .select('*')
+          .eq('instancia', conversation.instancia_nombre)
+          .eq('numero', conversation.numero_contacto + '@s.whatsapp.net')
+          .order('created_at', { ascending: true })
+          .limit(MESSAGE_PAGE_SIZE);
+
+        if (fallbackError) {
+          console.error('❌ Fallback query also failed:', fallbackError);
+          setMessages([]);
+          setLoading(false);
+          return;
+        }
+
+        const fallbackResult = fallbackMessages || [];
+        console.log('✅ Fallback found messages:', fallbackResult.length);
+        setMessages(fallbackResult);
+        setCachedMessages(conversation.id, fallbackResult, false);
+        setLoading(false);
+        return;
       }
 
-      const fetchedMessages = (dbMessages || []).reverse(); // Invertir para orden cronológico
+      const fetchedMessages = (dbMessages || []).reverse();
       const totalCount = count || 0;
       const hasMore = offset + MESSAGE_PAGE_SIZE < totalCount;
 
-      console.log(`Fetched ${fetchedMessages.length} messages for conversation ${conversation.id}, page ${page}`);
+      console.log('✅ Messages fetched successfully:', {
+        count: fetchedMessages.length,
+        totalCount,
+        hasMore,
+        page
+      });
       
       if (page === 0) {
-        // Primera página - reemplazar completamente
         setMessages(fetchedMessages);
         setCachedMessages(conversation.id, fetchedMessages, hasMore, totalCount);
       } else {
-        // Páginas adicionales - prepender (mensajes más antiguos van al inicio)
         setMessages(prev => {
           const combined = [...fetchedMessages, ...prev];
           const unique = combined.filter((msg, index, self) => 
@@ -105,40 +129,19 @@ export const useOptimizedMessages = (setConversations: React.Dispatch<React.SetS
 
       setHasMoreMessages(hasMore);
 
-      // Marcar como leído solo en la primera página
       if (page === 0) {
         markAsRead(conversation);
       }
 
-    } catch (error) {
+    } catch (error: any) {
       if (error.name !== 'AbortError') {
-        console.error('Error fetching messages:', error);
-        
-        // Solo intentar fallback si es la conversación actual
-        if (currentConversationRef.current === conversation.id && page === 0) {
-          try {
-            const { data: dbMessages } = await supabase
-              .from('mensajes')
-              .select('*')
-              .eq('instancia', conversation.instancia_nombre)
-              .eq('numero', conversation.numero_contacto)
-              .order('created_at', { ascending: true })
-              .limit(MESSAGE_PAGE_SIZE);
-
-            const fallbackMessages = dbMessages || [];
-            console.log(`Fallback found ${fallbackMessages.length} messages`);
-            setMessages(fallbackMessages);
-            setCachedMessages(conversation.id, fallbackMessages, false);
-          } catch (fallbackError) {
-            console.error('Fallback also failed:', fallbackError);
-            setMessages([]);
-          }
-        }
+        console.error('❌ Error in fetchMessages:', error);
+        setMessages([]);
       }
     } finally {
       setLoading(false);
     }
-  }, [getCachedMessages, setCachedMessages, prependCachedMessages, MESSAGE_PAGE_SIZE]);
+  }, [getCachedMessages, setCachedMessages, prependCachedMessages, MESSAGE_PAGE_SIZE, messages.length]);
 
   const loadMoreMessages = useCallback(async (conversation: Conversation) => {
     if (!hasMoreMessages || loading) return;
@@ -167,13 +170,13 @@ export const useOptimizedMessages = (setConversations: React.Dispatch<React.SetS
       conversation_id: conversation.id
     };
 
+    console.log('➕ Adding message to chat:', messageText);
     setMessages(prev => [...prev, newMessage]);
     appendCachedMessages(conversation.id, [newMessage]);
   }, [appendCachedMessages]);
 
   const markAsRead = useCallback(async (conversation: Conversation) => {
     try {
-      // Actualizar estado local inmediatamente
       setConversations(prev => 
         prev.map(conv => 
           conv.id === conversation.id
@@ -182,21 +185,20 @@ export const useOptimizedMessages = (setConversations: React.Dispatch<React.SetS
         )
       );
 
-      // Actualizar en base de datos
       const { error } = await supabase.rpc('mark_conversation_as_read', {
         conversation_uuid: conversation.id
       });
 
       if (error) {
-        console.error('Error marking conversation as read:', error);
+        console.error('❌ Error marking conversation as read:', error);
       }
     } catch (error) {
-      console.error('Error marking as read:', error);
+      console.error('❌ Error in markAsRead:', error);
     }
   }, [setConversations]);
 
   const clearMessages = useCallback(() => {
-    console.log('Clearing messages');
+    console.log('🧹 Clearing messages');
     setMessages([]);
     setHasMoreMessages(false);
     currentConversationRef.current = null;
@@ -207,6 +209,7 @@ export const useOptimizedMessages = (setConversations: React.Dispatch<React.SetS
   }, []);
 
   const refreshMessages = useCallback((conversation: Conversation) => {
+    console.log('🔄 Refreshing messages for conversation:', conversation.id);
     invalidateMessagesCache(conversation.id);
     fetchMessages(conversation, 0, false);
   }, [invalidateMessagesCache, fetchMessages]);

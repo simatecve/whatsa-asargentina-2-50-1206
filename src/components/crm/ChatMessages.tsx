@@ -30,15 +30,16 @@ export const ChatMessages = ({
   const previousScrollHeight = useRef<number>(0);
   const isLoadingMoreRef = useRef<boolean>(false);
 
-  console.log('ChatMessages render:', { 
+  console.log('💬 ChatMessages render:', { 
     messagesCount: messages.length, 
     hasMoreMessages, 
     loadingMore,
     isAtMessageLimit,
-    firstMessage: messages[0]?.mensaje?.substring(0, 50)
+    firstMessage: messages[0]?.mensaje?.substring(0, 30),
+    lastMessage: messages[messages.length - 1]?.mensaje?.substring(0, 30)
   });
 
-  // Si está en el límite de mensajes, mostrar mensaje informativo simple SIN alerta
+  // Mostrar mensaje de límite si es necesario
   if (isAtMessageLimit && messageUsage) {
     return (
       <div className="h-full p-4 flex flex-col justify-center">
@@ -51,28 +52,24 @@ export const ChatMessages = ({
     );
   }
 
-  // Handle scroll para cargar más mensajes
   const handleScroll = useCallback((event: React.UIEvent<HTMLDivElement>) => {
     const scrollElement = event.currentTarget;
     const { scrollTop } = scrollElement;
     
-    // Si llegamos al top y hay más mensajes, cargar más
     if (scrollTop === 0 && hasMoreMessages && onLoadMore && !loadingMore && !isLoadingMoreRef.current) {
-      console.log('Loading more messages...');
+      console.log('⬆️ Loading more messages...');
       isLoadingMoreRef.current = true;
       previousScrollHeight.current = scrollElement.scrollHeight;
       onLoadMore();
     }
   }, [hasMoreMessages, onLoadMore, loadingMore]);
 
-  // Restaurar posición de scroll después de cargar más mensajes
   useEffect(() => {
     if (loadingMore === false && isLoadingMoreRef.current && scrollAreaRef.current) {
       const scrollElement = scrollAreaRef.current;
       const newScrollHeight = scrollElement.scrollHeight;
       const heightDifference = newScrollHeight - previousScrollHeight.current;
       
-      // Mantener la posición relativa del scroll
       scrollElement.scrollTop = heightDifference;
       isLoadingMoreRef.current = false;
     }
@@ -82,7 +79,6 @@ export const ChatMessages = ({
     <div className="h-full relative">
       <ScrollArea className="h-full" ref={scrollAreaRef} onScroll={handleScroll}>
         <div className="p-2 sm:p-4 space-y-4 min-h-full">
-          {/* Botón para cargar más mensajes */}
           {hasMoreMessages && (
             <div className="flex justify-center py-2">
               <Button
