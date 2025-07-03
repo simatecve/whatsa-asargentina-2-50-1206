@@ -22,16 +22,31 @@ const LeadsKanban = () => {
         return;
       }
 
+      // Primero obtener los nombres de las instancias del usuario
+      const { data: instancesData, error: instancesError } = await supabase
+        .from("instancias")
+        .select("nombre")
+        .eq("user_id", userData.user.id);
+
+      if (instancesError) {
+        console.error("Error fetching instances:", instancesError);
+        setLeads([]);
+        return;
+      }
+
+      if (!instancesData || instancesData.length === 0) {
+        setLeads([]);
+        return;
+      }
+
+      // Extraer los nombres de las instancias
+      const instanceNames = instancesData.map(instance => instance.nombre);
+
       // Obtener leads de las instancias del usuario
       const { data: leadsData, error } = await supabase
         .from("leads")
         .select("*")
-        .in("instancia", 
-          supabase
-            .from("instancias")
-            .select("nombre")
-            .eq("user_id", userData.user.id)
-        )
+        .in("instancia", instanceNames)
         .order("created_at", { ascending: false });
 
       if (error) {
