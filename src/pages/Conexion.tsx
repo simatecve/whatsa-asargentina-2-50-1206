@@ -4,11 +4,14 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { ConnectionTabs } from "@/components/connection/ConnectionTabs";
 import { Wifi, Sparkles, TrendingUp, Zap } from "lucide-react";
 import { useSubscriptionValidation } from "@/hooks/useSubscriptionValidation";
+import { useConnection } from "@/contexts/ConnectionContext";
+import QRModal from "@/components/QRModal";
 
 const Conexion = () => {
   const { suscripcionActiva, limits } = useSubscriptionValidation();
   const [activeTab, setActiveTab] = useState("instances");
   const [apiConfigExists] = useState(true);
+  const { currentQRCode, currentInstanceName, modalOpen, handleCloseModal } = useConnection();
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50/30 to-indigo-50/20 dark:from-slate-900 dark:via-slate-800 dark:to-slate-900">
@@ -77,6 +80,14 @@ const Conexion = () => {
           </CardContent>
         </Card>
       </div>
+
+      {/* QR Modal */}
+      <QRModal
+        open={modalOpen}
+        onClose={handleCloseModal}
+        qrCode={currentQRCode}
+        instanceName={currentInstanceName}
+      />
     </div>
   );
 };
