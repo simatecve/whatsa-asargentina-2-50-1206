@@ -25,10 +25,11 @@ export const useRealtimeSubscriptions = ({
   });
 
   useEffect(() => {
+    // NUNCA hacer return temprano en hooks para evitar "fewer hooks than expected"
     if (!userData) {
       console.log('🔴 REALTIME: No userData, skipping subscription');
-      return;
-    }
+      // En lugar de return, configurar variables vacías
+    } else {
 
     console.log('🔴 REALTIME: Setting up realtime subscriptions...');
 
@@ -84,12 +85,18 @@ export const useRealtimeSubscriptions = ({
         }
       });
 
-    console.log('✅ REALTIME: Subscriptions configured');
+      console.log('✅ REALTIME: Subscriptions configured');
 
+      return () => {
+        console.log('🔴 REALTIME: Cleaning up subscriptions');
+        supabase.removeChannel(conversationsChannel);
+        supabase.removeChannel(messagesChannel);
+      };
+    }
+
+    // Si no hay userData, return una función de cleanup vacía
     return () => {
-      console.log('🔴 REALTIME: Cleaning up subscriptions');
-      supabase.removeChannel(conversationsChannel);
-      supabase.removeChannel(messagesChannel);
+      console.log('🔴 REALTIME: No subscriptions to clean up');
     };
   }, [userData, fetchConversations, fetchMessages, selectedConversation]);
 };
