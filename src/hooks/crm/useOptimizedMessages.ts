@@ -21,22 +21,28 @@ export const useOptimizedMessages = (setConversations: React.Dispatch<React.SetS
   } = useOptimizedCache();
 
   const fetchMessages = useCallback(async (conversation: Conversation, page: number = 0, useCache: boolean = true) => {
-    console.log('Starting fetchMessages for conversation:', conversation.id, 'page:', page);
+    console.log('🔄 Starting fetchMessages for conversation:', conversation.id, 'page:', page, 'useCache:', useCache);
     
     // Prevenir múltiples fetches simultáneos para la misma conversación
     if (currentConversationRef.current === conversation.id && loading && page === 0) {
-      console.log('Already fetching messages for this conversation');
+      console.log('⏳ Already fetching messages for this conversation');
       return;
     }
 
-    // Si es página 0 (inicial), verificar cache
+    // Si es página 0 (inicial), verificar cache solo si useCache es true
     if (page === 0) {
       currentConversationRef.current = conversation.id;
+      
+      // Para tiempo real, SIEMPRE invalidar cache primero
+      if (!useCache) {
+        console.log('🔄 REALTIME: Invalidating messages cache for fresh data');
+        invalidateMessagesCache(conversation.id);
+      }
       
       if (useCache) {
         const cached = getCachedMessages(conversation.id);
         if (cached) {
-          console.log(`Using cached messages: ${cached.data.length} messages`);
+          console.log(`📦 Using cached messages: ${cached.data.length} messages`);
           setMessages(cached.data);
           setHasMoreMessages(cached.hasMore);
           setLoading(false);
@@ -57,7 +63,7 @@ export const useOptimizedMessages = (setConversations: React.Dispatch<React.SetS
       abortControllerRef.current = new AbortController();
       const signal = abortControllerRef.current.signal;
 
-      console.log('Fetching messages for conversation:', conversation.id);
+      console.log('🔄 Fetching FRESH messages for conversation:', conversation.id);
       
       const offset = page * MESSAGE_PAGE_SIZE;
       
@@ -71,12 +77,12 @@ export const useOptimizedMessages = (setConversations: React.Dispatch<React.SetS
 
       // Verificar si todavía es la conversación actual
       if (currentConversationRef.current !== conversation.id) {
-        console.log('Conversation changed during fetch, ignoring results');
+        console.log('⚠️ Conversation changed during fetch, ignoring results');
         return;
       }
 
       if (error) {
-        console.error('Error fetching messages from DB:', error);
+        console.error('❌ Error fetching messages from DB:', error);
         throw error;
       }
 
@@ -84,14 +90,17 @@ export const useOptimizedMessages = (setConversations: React.Dispatch<React.SetS
       const totalCount = count || 0;
       const hasMore = offset + MESSAGE_PAGE_SIZE < totalCount;
 
-      console.log(`Fetched ${fetchedMessages.length} messages for conversation ${conversation.id}, page ${page}`);
+      console.log(`✅ Fetched ${fetchedMessages.length} FRESH messages for conversation ${conversation.id}, page ${page}`);
       
       if (page === 0) {
         // Primera página - reemplazar completamente
         setMessages(fetchedMessages);
-        setCachedMessages(conversation.id, fetchedMessages, hasMore, totalCount);
+        // Solo cachear si useCache es true
+        if (useCache) {
+          setCachedMessages(conversation.id, fetchedMessages, hasMore, totalCount);
+        }
       } else {
-        // Páginas adicionales - prepender (mensajes más antiguos van al inicio)
+        // Páginas adicionales - prepender
         setMessages(prev => {
           const combined = [...fetchedMessages, ...prev];
           const unique = combined.filter((msg, index, self) => 
@@ -100,7 +109,9 @@ export const useOptimizedMessages = (setConversations: React.Dispatch<React.SetS
           return unique;
         });
         
-        prependCachedMessages(conversation.id, fetchedMessages);
+        if (useCache) {
+          prependCachedMessages(conversation.id, fetchedMessages);
+        }
       }
 
       setHasMoreMessages(hasMore);
@@ -112,7 +123,7 @@ export const useOptimizedMessages = (setConversations: React.Dispatch<React.SetS
 
     } catch (error) {
       if (error.name !== 'AbortError') {
-        console.error('Error fetching messages:', error);
+        console.error('❌ Error fetching messages:', error);
         
         // Solo intentar fallback si es la conversación actual
         if (currentConversationRef.current === conversation.id && page === 0) {
@@ -126,11 +137,13 @@ export const useOptimizedMessages = (setConversations: React.Dispatch<React.SetS
               .limit(MESSAGE_PAGE_SIZE);
 
             const fallbackMessages = dbMessages || [];
-            console.log(`Fallback found ${fallbackMessages.length} messages`);
+            console.log(`🔄 Fallback found ${fallbackMessages.length} messages`);
             setMessages(fallbackMessages);
-            setCachedMessages(conversation.id, fallbackMessages, false);
+            if (useCache) {
+              setCachedMessages(conversation.id, fallbackMessages, false);
+            }
           } catch (fallbackError) {
-            console.error('Fallback also failed:', fallbackError);
+            console.error('❌ Fallback also failed:', fallbackError);
             setMessages([]);
           }
         }
@@ -138,7 +151,7 @@ export const useOptimizedMessages = (setConversations: React.Dispatch<React.SetS
     } finally {
       setLoading(false);
     }
-  }, [getCachedMessages, setCachedMessages, prependCachedMessages, MESSAGE_PAGE_SIZE]);
+  }, [getCachedMessages, setCachedMessages, prependCachedMessages, invalidateMessagesCache, MESSAGE_PAGE_SIZE]);
 
   const loadMoreMessages = useCallback(async (conversation: Conversation) => {
     if (!hasMoreMessages || loading) return;
@@ -196,7 +209,7 @@ export const useOptimizedMessages = (setConversations: React.Dispatch<React.SetS
   }, [setConversations]);
 
   const clearMessages = useCallback(() => {
-    console.log('Clearing messages');
+    console.log('🧹 Clearing messages');
     setMessages([]);
     setHasMoreMessages(false);
     currentConversationRef.current = null;
@@ -206,10 +219,11 @@ export const useOptimizedMessages = (setConversations: React.Dispatch<React.SetS
     }
   }, []);
 
+  // Función para refresh inmediato (sin cache) - usada por tiempo real
   const refreshMessages = useCallback((conversation: Conversation) => {
-    invalidateMessagesCache(conversation.id);
+    console.log('🔄 REFRESH: Force refreshing messages without cache');
     fetchMessages(conversation, 0, false);
-  }, [invalidateMessagesCache, fetchMessages]);
+  }, [fetchMessages]);
 
   return {
     messages,
