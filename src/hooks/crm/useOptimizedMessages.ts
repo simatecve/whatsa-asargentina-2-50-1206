@@ -92,7 +92,8 @@ export const useOptimizedMessages = (setConversations: React.Dispatch<React.SetS
       
       if (page === 0) {
         // Primera página - reemplazar completamente y FORZAR actualización
-        setMessages(fetchedMessages);
+        console.log('🔄 FORCE UPDATE: Setting fresh messages');
+        setMessages([...fetchedMessages]); // Crear nuevo array para forzar re-render
         // SIEMPRE cachear después de obtener datos frescos
         setCachedMessages(conversation.id, fetchedMessages, hasMore, totalCount);
       } else {
@@ -132,7 +133,7 @@ export const useOptimizedMessages = (setConversations: React.Dispatch<React.SetS
 
             const fallbackMessages = dbMessages || [];
             console.log(`🔄 Fallback encontró ${fallbackMessages.length} mensajes`);
-            setMessages(fallbackMessages);
+            setMessages([...fallbackMessages]); // Forzar nuevo array
             setCachedMessages(conversation.id, fallbackMessages, false);
           } catch (fallbackError) {
             console.error('❌ Fallback también falló:', fallbackError);
@@ -172,7 +173,7 @@ export const useOptimizedMessages = (setConversations: React.Dispatch<React.SetS
       conversation_id: conversation.id
     };
 
-    // FORZAR actualización inmediata del estado
+    // FORZAR actualización inmediata del estado con nuevo array
     setMessages(prev => [...prev, newMessage]);
     appendCachedMessages(conversation.id, [newMessage]);
   }, [appendCachedMessages]);

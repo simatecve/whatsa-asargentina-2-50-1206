@@ -18,6 +18,8 @@ export const useRealtimeSubscriptions = ({
   fetchConversations,
   fetchMessages
 }: UseRealtimeSubscriptionsProps) => {
+  const channelRef = useRef<any>(null);
+
   console.log('🔄 REALTIME Hook initialized with:', { 
     hasUserData: !!userData, 
     selectedInstanceId, 
@@ -25,78 +27,93 @@ export const useRealtimeSubscriptions = ({
   });
 
   useEffect(() => {
-    // NUNCA hacer return temprano en hooks para evitar "fewer hooks than expected"
+    // Limpiar canal anterior si existe
+    if (channelRef.current) {
+      console.log('🧹 Cleaning previous channel');
+      supabase.removeChannel(channelRef.current);
+      channelRef.current = null;
+    }
+
     if (!userData) {
       console.log('🔴 REALTIME: No userData, skipping subscription');
-      // En lugar de return, configurar variables vacías
-    } else {
+      return;
+    }
 
     console.log('🔴 REALTIME: Setting up realtime subscriptions...');
 
-    // Canal único para conversaciones
-    const conversationsChannel = supabase
-      .channel(`conversations_${Date.now()}`)
-      .on(
-        'postgres_changes',
-        {
-          event: '*',
-          schema: 'public',
-          table: 'conversaciones'
-        },
-        (payload) => {
-          console.log('🚨 CONVERSATION CHANGED:', payload.eventType, payload);
-          fetchConversations();
-        }
-      )
-      .subscribe((status) => {
-        console.log('🔗 Conversations channel:', status);
-        if (status === 'SUBSCRIBED') {
-          console.log('✅ Conversations channel SUBSCRIBED successfully');
-        }
-      });
+    // Crear un canal único con timestamp para evitar conflictos
+    const channelName = `realtime_changes_${Date.now()}`;
+    const channel = supabase.channel(channelName);
 
-    // Canal único para mensajes
-    const messagesChannel = supabase
-      .channel(`messages_${Date.now()}`)
-      .on(
-        'postgres_changes',
-        {
-          event: '*',
-          schema: 'public',
-          table: 'mensajes'
-        },
-        (payload) => {
-          console.log('🚨 MESSAGE CHANGED:', payload.eventType, payload);
+    // Escuchar cambios en conversaciones
+    channel.on(
+      'postgres_changes',
+      {
+        event: '*',
+        schema: 'public',
+        table: 'conversaciones'
+      },
+      (payload) => {
+        console.log('🚨 CONVERSATION CHANGED:', payload.eventType, payload);
+        // Actualizar conversaciones inmediatamente
+        fetchConversations();
+      }
+    );
+
+    // Escuchar cambios en mensajes
+    channel.on(
+      'postgres_changes',
+      {
+        event: '*',
+        schema: 'public',
+        table: 'mensajes'
+      },
+      (payload) => {
+        console.log('🚨 MESSAGE CHANGED:', payload.eventType, payload);
+        
+        // SIEMPRE actualizar conversaciones cuando hay cambios en mensajes
+        fetchConversations();
+        
+        // Si hay una conversación seleccionada, verificar si el mensaje pertenece a ella
+        if (selectedConversation && payload.new) {
+          const messageData = payload.new as any;
+          console.log('📝 Checking message for current conversation:', {
+            messageConversationId: messageData.conversation_id,
+            selectedConversationId: selectedConversation.id,
+            messageInstancia: messageData.instancia,
+            selectedInstancia: selectedConversation.instancia_nombre
+          });
           
-          // Siempre actualizar conversaciones cuando hay cambios en mensajes
-          fetchConversations();
-          
-          // Si hay una conversación seleccionada, actualizar mensajes también
-          if (selectedConversation) {
-            console.log('⚡ Updating messages for current conversation');
+          // Actualizar mensajes si pertenece a la conversación actual
+          if (messageData.conversation_id === selectedConversation.id) {
+            console.log('⚡ Message belongs to current conversation, updating messages');
             fetchMessages(selectedConversation);
           }
         }
-      )
-      .subscribe((status) => {
-        console.log('🔗 Messages channel:', status);
-        if (status === 'SUBSCRIBED') {
-          console.log('✅ Messages channel SUBSCRIBED successfully');
-        }
-      });
+      }
+    );
 
-      console.log('✅ REALTIME: Subscriptions configured');
+    // Suscribirse al canal
+    channel.subscribe((status) => {
+      console.log('🔗 Realtime channel status:', status);
+      if (status === 'SUBSCRIBED') {
+        console.log('✅ Realtime channel SUBSCRIBED successfully');
+        channelRef.current = channel;
+      } else if (status === 'CHANNEL_ERROR') {
+        console.error('❌ Realtime channel error');
+      } else if (status === 'TIMED_OUT') {
+        console.error('⏰ Realtime channel timed out');
+      }
+    });
 
-      return () => {
-        console.log('🔴 REALTIME: Cleaning up subscriptions');
-        supabase.removeChannel(conversationsChannel);
-        supabase.removeChannel(messagesChannel);
-      };
-    }
+    console.log('✅ REALTIME: Subscriptions configured');
 
-    // Si no hay userData, return una función de cleanup vacía
     return () => {
-      console.log('🔴 REALTIME: No subscriptions to clean up');
+      console.log('🔴 REALTIME: Cleaning up subscriptions');
+      if (channelRef.current) {
+        supabase.removeChannel(channelRef.current);
+        channelRef.current = null;
+      }
     };
-  }, [userData, fetchConversations, fetchMessages, selectedConversation]);
+  }, [userData, selectedConversation?.id, fetchConversations, fetchMessages]);
 };

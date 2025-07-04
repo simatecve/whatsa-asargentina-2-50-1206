@@ -41,19 +41,17 @@ export const useCRMData = (selectedInstanceId?: string) => {
     hasMoreMessages
   } = useOptimizedMessages(setConversations);
 
-  // Callbacks optimizados para tiempo real
+  // Callbacks optimizados para tiempo real - FORZAR REFRESH SIN CACHE
   const realtimeFetchConversations = useCallback(() => {
-    console.log('🔄 REAL-TIME: Refreshing conversations immediately');
+    console.log('🔄 REAL-TIME: Force refreshing conversations without cache');
     refreshConversations();
   }, [refreshConversations]);
 
   const realtimeFetchMessages = useCallback(async (conversation: Conversation) => {
-    console.log('🔄 REAL-TIME: Refreshing messages immediately for conversation:', conversation.id);
-    if (selectedConversation?.id === conversation.id) {
-      // Usar refreshMessages que fuerza actualización sin cache
-      refreshMessages(conversation);
-    }
-  }, [selectedConversation, refreshMessages]);
+    console.log('🔄 REAL-TIME: Force refreshing messages without cache for conversation:', conversation.id);
+    // SIEMPRE usar refreshMessages que fuerza actualización sin cache
+    refreshMessages(conversation);
+  }, [refreshMessages]);
 
   // Real-time subscriptions optimizadas
   useRealtimeSubscriptions({
@@ -70,7 +68,7 @@ export const useCRMData = (selectedInstanceId?: string) => {
     
     setSelectedConversation(conversation);
     
-    // Si hay una conversación seleccionada, cargar sus mensajes (con cache)
+    // Si hay una conversación seleccionada, cargar sus mensajes (con cache solo en carga inicial)
     if (conversation) {
       console.log('Loading messages for conversation:', conversation.id);
       fetchMessages(conversation);
@@ -83,6 +81,7 @@ export const useCRMData = (selectedInstanceId?: string) => {
   // Handler para mensajes enviados
   const handleMessageSent = useCallback((messageText: string) => {
     if (selectedConversation) {
+      // Agregar mensaje optimísticamente
       addMessageToChat(selectedConversation, messageText);
     }
   }, [selectedConversation, addMessageToChat]);
