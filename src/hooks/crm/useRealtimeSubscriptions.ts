@@ -18,40 +18,23 @@ export const useRealtimeSubscriptions = ({
   fetchConversations,
   fetchMessages
 }: UseRealtimeSubscriptionsProps) => {
-  const lastUpdateRef = useRef<number>(0);
-
-  // Función para actualizar conversaciones INMEDIATAMENTE sin ningún delay
-  const forceUpdateConversations = () => {
-    const now = Date.now();
-    // Evitar actualizaciones duplicadas en menos de 50ms
-    if (now - lastUpdateRef.current < 50) {
-      return;
-    }
-    lastUpdateRef.current = now;
-    
-    console.log('🔥 FORCE UPDATE: Actualizando conversaciones INMEDIATAMENTE');
-    fetchConversations();
-  };
-
-  // Función para actualizar mensajes INMEDIATAMENTE
-  const forceUpdateMessages = (conversation: Conversation) => {
-    console.log('🔥 FORCE UPDATE: Actualizando mensajes INMEDIATAMENTE para:', conversation.id);
-    fetchMessages(conversation);
-  };
+  console.log('🔄 REALTIME Hook initialized with:', { 
+    hasUserData: !!userData, 
+    selectedInstanceId, 
+    selectedConversationId: selectedConversation?.id 
+  });
 
   useEffect(() => {
     if (!userData) {
-      console.log('🔴 REALTIME: No userData, no subscribing to realtime');
+      console.log('🔴 REALTIME: No userData, skipping subscription');
       return;
     }
 
-    console.log('🔴 REALTIME: Configurando suscripciones de tiempo real AGRESIVAS...');
-    console.log('🔴 REALTIME: Selected conversation:', selectedConversation?.id);
-    console.log('🔴 REALTIME: Selected instance:', selectedInstanceId);
+    console.log('🔴 REALTIME: Setting up realtime subscriptions...');
 
-    // Suscripción CRÍTICA para conversaciones - MÁXIMA PRIORIDAD
+    // Canal único para conversaciones
     const conversationsChannel = supabase
-      .channel('conversations-realtime-force')
+      .channel(`conversations_${Date.now()}`)
       .on(
         'postgres_changes',
         {
@@ -60,133 +43,53 @@ export const useRealtimeSubscriptions = ({
           table: 'conversaciones'
         },
         (payload) => {
-          console.log('🚨 CONVERSACIÓN CAMBIÓ:', payload.eventType, payload);
-          // Actualización INMEDIATA y FORZADA
-          forceUpdateConversations();
+          console.log('🚨 CONVERSATION CHANGED:', payload.eventType, payload);
+          fetchConversations();
         }
       )
       .subscribe((status) => {
-        console.log('🔗 Conversations channel status:', status);
+        console.log('🔗 Conversations channel:', status);
+        if (status === 'SUBSCRIBED') {
+          console.log('✅ Conversations channel SUBSCRIBED successfully');
+        }
       });
 
-    // Suscripción ULTRA-CRÍTICA para mensajes nuevos
+    // Canal único para mensajes
     const messagesChannel = supabase
-      .channel('messages-realtime-force')
+      .channel(`messages_${Date.now()}`)
       .on(
         'postgres_changes',
         {
-          event: 'INSERT',
+          event: '*',
           schema: 'public',
           table: 'mensajes'
         },
         (payload) => {
-          console.log('🚨 NUEVO MENSAJE DETECTADO:', payload);
+          console.log('🚨 MESSAGE CHANGED:', payload.eventType, payload);
           
-          const newMessage = payload.new as any;
+          // Siempre actualizar conversaciones cuando hay cambios en mensajes
+          fetchConversations();
           
-          // CRÍTICO: Actualizar conversaciones INMEDIATAMENTE (sin delay)
-          console.log('⚡ ACTUALIZANDO CONVERSACIONES AHORA MISMO');
-          forceUpdateConversations();
-          
-          // Si estamos viendo esta conversación, actualizar mensajes también
-          if (selectedConversation && newMessage?.conversation_id === selectedConversation.id) {
-            console.log('⚡ ACTUALIZANDO MENSAJES DE CONVERSACIÓN ACTUAL');
-            forceUpdateMessages(selectedConversation);
-          }
-        }
-      )
-      .on(
-        'postgres_changes',
-        {
-          event: 'UPDATE',
-          schema: 'public',
-          table: 'mensajes'
-        },
-        (payload) => {
-          console.log('🔄 Mensaje actualizado:', payload);
-          
-          const updatedMessage = payload.new as any;
-          
-          // Actualización inmediata para updates de mensajes
-          if (selectedConversation && updatedMessage?.conversation_id === selectedConversation.id) {
-            console.log('🔄 Actualizando mensajes por UPDATE');
-            forceUpdateMessages(selectedConversation);
+          // Si hay una conversación seleccionada, actualizar mensajes también
+          if (selectedConversation) {
+            console.log('⚡ Updating messages for current conversation');
+            fetchMessages(selectedConversation);
           }
         }
       )
       .subscribe((status) => {
-        console.log('🔗 Messages channel status:', status);
+        console.log('🔗 Messages channel:', status);
+        if (status === 'SUBSCRIBED') {
+          console.log('✅ Messages channel SUBSCRIBED successfully');
+        }
       });
 
-    // Suscripción para cambios en bot status
-    const botStatusChannel = supabase
-      .channel('bot-status-realtime-force')
-      .on(
-        'postgres_changes',
-        {
-          event: 'INSERT',
-          schema: 'public',
-          table: 'contactos_bots'
-        },
-        (payload) => {
-          console.log('🤖 Bot status INSERT:', payload);
-          
-          const payloadNew = payload.new as any;
-          const numeroContacto = payloadNew?.numero_contacto;
-          const instanciaNombre = payloadNew?.instancia_nombre;
-          
-          if (numeroContacto && instanciaNombre) {
-            window.dispatchEvent(new CustomEvent('bot-status-changed', { 
-              detail: { 
-                numero_contacto: numeroContacto,
-                instancia_nombre: instanciaNombre,
-                bot_activo: false
-              } 
-            }));
-          }
-        }
-      )
-      .on(
-        'postgres_changes',
-        {
-          event: 'DELETE',
-          schema: 'public',
-          table: 'contactos_bots'
-        },
-        (payload) => {
-          console.log('🤖 Bot status DELETE:', payload);
-          
-          const payloadOld = payload.old as any;
-          const numeroContacto = payloadOld?.numero_contacto;
-          const instanciaNombre = payloadOld?.instancia_nombre;
-          
-          if (numeroContacto && instanciaNombre) {
-            window.dispatchEvent(new CustomEvent('bot-status-changed', { 
-              detail: { 
-                numero_contacto: numeroContacto,
-                instancia_nombre: instanciaNombre,
-                bot_activo: true
-              } 
-            }));
-          }
-        }
-      )
-      .subscribe((status) => {
-        console.log('🤖 Bot status channel status:', status);
-      });
-
-    console.log('✅ REALTIME: Suscripciones AGRESIVAS de tiempo real ACTIVAS');
-    console.log('✅ REALTIME: Channels created:', {
-      conversations: conversationsChannel.topic,
-      messages: messagesChannel.topic,
-      botStatus: botStatusChannel.topic
-    });
+    console.log('✅ REALTIME: Subscriptions configured');
 
     return () => {
-      console.log('🔴 REALTIME: Limpiando suscripciones agresivas de tiempo real');
+      console.log('🔴 REALTIME: Cleaning up subscriptions');
       supabase.removeChannel(conversationsChannel);
       supabase.removeChannel(messagesChannel);
-      supabase.removeChannel(botStatusChannel);
     };
-  }, [userData, selectedInstanceId, selectedConversation?.id, fetchConversations, fetchMessages]);
+  }, [userData, fetchConversations, fetchMessages, selectedConversation]);
 };
