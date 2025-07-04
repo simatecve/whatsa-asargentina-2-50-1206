@@ -17,36 +17,34 @@ export const useOptimizedConversations = (selectedInstanceId?: string, userData?
     updateConversationInCache
   } = useOptimizedCache();
 
-  const fetchConversations = useCallback(async (instanceId?: string, useCache: boolean = true) => {
+  const fetchConversations = useCallback(async (instanceId?: string, forceRefresh: boolean = false) => {
     try {
       // Cancelar petición anterior si existe
       if (abortControllerRef.current) {
         abortControllerRef.current.abort();
       }
 
-      // Para tiempo real, SIEMPRE invalidar cache primero
-      if (!useCache) {
-        console.log('🔄 REALTIME: Invalidating conversations cache for fresh data');
+      // Para actualizaciones de tiempo real, SIEMPRE invalidar cache y forzar refresh
+      if (forceRefresh) {
+        console.log('🔄 FORCE REFRESH: Invalidando cache y obteniendo datos frescos');
         invalidateConversationsCache();
-      }
-
-      // Verificar cache solo si useCache es true
-      if (useCache) {
+      } else {
+        // Solo usar cache en carga inicial
         const cached = getCachedConversations(instanceId || "all");
         if (cached) {
-          console.log('📦 Using cached conversations:', cached.length);
+          console.log('📦 Usando conversaciones cacheadas:', cached.length);
           setConversations(cached);
           setLoading(false);
           return;
         }
       }
 
-      console.log('🔄 Fetching FRESH conversations for instance:', instanceId);
+      console.log('🔄 Obteniendo conversaciones FRESCAS para instancia:', instanceId);
       
       const { data: { session } } = await supabase.auth.getSession();
       
       if (!session?.user) {
-        console.log('❌ No session found, cannot fetch conversations');
+        console.log('❌ No hay sesión, no se pueden obtener conversaciones');
         setConversations([]);
         setLoading(false);
         return;
@@ -99,7 +97,7 @@ export const useOptimizedConversations = (selectedInstanceId?: string, userData?
       const { data: conversationsData, error } = await query;
 
       if (error) {
-        console.error('❌ Error fetching conversations:', error);
+        console.error('❌ Error obteniendo conversaciones:', error);
         throw error;
       }
 
@@ -113,19 +111,18 @@ export const useOptimizedConversations = (selectedInstanceId?: string, userData?
         instancia_nombre: conv.instancia_nombre
       }));
       
-      console.log('✅ Fresh conversations fetched:', formattedConversations.length);
+      console.log('✅ Conversaciones frescas obtenidas:', formattedConversations.length);
       
-      // Actualizar cache solo si no es una actualización en tiempo real
-      if (useCache) {
-        setCachedConversations(formattedConversations, instanceId || "all");
-      }
+      // SIEMPRE actualizar el cache después de obtener datos frescos
+      setCachedConversations(formattedConversations, instanceId || "all");
       
+      // FORZAR actualización del estado
       setConversations(formattedConversations);
       lastFetchRef.current = instanceId;
       
     } catch (error: any) {
       if (error.name !== 'AbortError') {
-        console.error('❌ Error fetching conversations:', error);
+        console.error('❌ Error obteniendo conversaciones:', error);
         setConversations([]);
       }
     } finally {
@@ -166,13 +163,13 @@ export const useOptimizedConversations = (selectedInstanceId?: string, userData?
         .eq('id', conversation.id);
 
       if (error) {
-        console.error('❌ Error updating conversation after send:', error);
-        // Refrescar sin cache en caso de error
-        fetchConversations(selectedInstanceId, false);
+        console.error('❌ Error actualizando conversación después de envío:', error);
+        // Forzar refresh en caso de error
+        fetchConversations(selectedInstanceId, true);
       }
     } catch (error) {
-      console.error('❌ Error updating conversation after send:', error);
-      fetchConversations(selectedInstanceId, false);
+      console.error('❌ Error actualizando conversación después de envío:', error);
+      fetchConversations(selectedInstanceId, true);
     }
   }, [updateConversationInCache, fetchConversations, selectedInstanceId]);
 
@@ -180,7 +177,7 @@ export const useOptimizedConversations = (selectedInstanceId?: string, userData?
   useEffect(() => {
     if (userData && lastFetchRef.current !== selectedInstanceId) {
       setLoading(true);
-      fetchConversations(selectedInstanceId);
+      fetchConversations(selectedInstanceId, false);
     }
   }, [userData, selectedInstanceId, fetchConversations]);
 
@@ -193,10 +190,10 @@ export const useOptimizedConversations = (selectedInstanceId?: string, userData?
     };
   }, []);
 
-  // Función para refresh inmediato (sin cache) - usada por tiempo real
+  // Función para refresh FORZADO (usado por tiempo real)
   const refreshConversations = useCallback(() => {
-    console.log('🔄 REFRESH: Force refreshing conversations without cache');
-    fetchConversations(selectedInstanceId, false);
+    console.log('🔄 REFRESH FORZADO: Actualizando conversaciones sin cache');
+    fetchConversations(selectedInstanceId, true);
   }, [fetchConversations, selectedInstanceId]);
 
   return {

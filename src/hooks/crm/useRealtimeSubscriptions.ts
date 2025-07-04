@@ -18,51 +18,35 @@ export const useRealtimeSubscriptions = ({
   fetchConversations,
   fetchMessages
 }: UseRealtimeSubscriptionsProps) => {
-  const conversationDebounceRef = useRef<NodeJS.Timeout | null>(null);
-  const messageDebounceRef = useRef<NodeJS.Timeout | null>(null);
+  const lastUpdateRef = useRef<number>(0);
 
-  // Funciones inmediatas sin debounce para tiempo real crítico
-  const immediateFetchConversations = () => {
-    console.log('IMMEDIATE: Refreshing conversations...');
+  // Función para actualizar conversaciones INMEDIATAMENTE sin ningún delay
+  const forceUpdateConversations = () => {
+    const now = Date.now();
+    // Evitar actualizaciones duplicadas en menos de 50ms
+    if (now - lastUpdateRef.current < 50) {
+      return;
+    }
+    lastUpdateRef.current = now;
+    
+    console.log('🔥 FORCE UPDATE: Actualizando conversaciones INMEDIATAMENTE');
     fetchConversations();
   };
 
-  const immediateFetchMessages = (conversation: Conversation) => {
-    console.log('IMMEDIATE: Refreshing messages for conversation:', conversation.id);
+  // Función para actualizar mensajes INMEDIATAMENTE
+  const forceUpdateMessages = (conversation: Conversation) => {
+    console.log('🔥 FORCE UPDATE: Actualizando mensajes INMEDIATAMENTE para:', conversation.id);
     fetchMessages(conversation);
-  };
-
-  // Funciones con debounce mínimo para evitar spam
-  const debouncedFetchConversations = (delay: number = 50) => {
-    if (conversationDebounceRef.current) {
-      clearTimeout(conversationDebounceRef.current);
-    }
-    
-    conversationDebounceRef.current = setTimeout(() => {
-      console.log('Debounced: Refreshing conversations...');
-      fetchConversations();
-    }, delay);
-  };
-
-  const debouncedFetchMessages = (conversation: Conversation, delay: number = 25) => {
-    if (messageDebounceRef.current) {
-      clearTimeout(messageDebounceRef.current);
-    }
-    
-    messageDebounceRef.current = setTimeout(() => {
-      console.log('Debounced: Refreshing messages for conversation:', conversation.id);
-      fetchMessages(conversation);
-    }, delay);
   };
 
   useEffect(() => {
     if (!userData) return;
 
-    console.log('🔴 REALTIME: Setting up IMMEDIATE real-time subscriptions...');
+    console.log('🔴 REALTIME: Configurando suscripciones de tiempo real AGRESIVAS...');
 
-    // Suscripción crítica para conversaciones - INMEDIATA
+    // Suscripción CRÍTICA para conversaciones - MÁXIMA PRIORIDAD
     const conversationsChannel = supabase
-      .channel('conversations-realtime-immediate')
+      .channel('conversations-realtime-force')
       .on(
         'postgres_changes',
         {
@@ -71,16 +55,16 @@ export const useRealtimeSubscriptions = ({
           table: 'conversaciones'
         },
         (payload) => {
-          console.log('🚨 CONVERSATION CHANGE DETECTED:', payload.eventType, payload);
-          // Actualización INMEDIATA para conversaciones
-          immediateFetchConversations();
+          console.log('🚨 CONVERSACIÓN CAMBIÓ:', payload.eventType, payload);
+          // Actualización INMEDIATA y FORZADA
+          setTimeout(() => forceUpdateConversations(), 0);
         }
       )
       .subscribe();
 
-    // Suscripción CRÍTICA para mensajes entrantes - INMEDIATA
+    // Suscripción ULTRA-CRÍTICA para mensajes nuevos
     const messagesChannel = supabase
-      .channel('messages-realtime-immediate')
+      .channel('messages-realtime-force')
       .on(
         'postgres_changes',
         {
@@ -89,18 +73,18 @@ export const useRealtimeSubscriptions = ({
           table: 'mensajes'
         },
         (payload) => {
-          console.log('🚨 NEW INCOMING MESSAGE DETECTED:', payload);
+          console.log('🚨 NUEVO MENSAJE DETECTADO:', payload);
           
           const newMessage = payload.new as any;
           
-          // CRÍTICO: Actualizar conversaciones INMEDIATAMENTE
-          console.log('⚡ UPDATING CONVERSATIONS IMMEDIATELY');
-          immediateFetchConversations();
+          // CRÍTICO: Actualizar conversaciones INMEDIATAMENTE (sin delay)
+          console.log('⚡ ACTUALIZANDO CONVERSACIONES AHORA MISMO');
+          setTimeout(() => forceUpdateConversations(), 0);
           
-          // Si estamos viendo esta conversación, actualizar mensajes INMEDIATAMENTE
+          // Si estamos viendo esta conversación, actualizar mensajes también
           if (selectedConversation && newMessage?.conversation_id === selectedConversation.id) {
-            console.log('⚡ UPDATING CURRENT CONVERSATION MESSAGES IMMEDIATELY');
-            immediateFetchMessages(selectedConversation);
+            console.log('⚡ ACTUALIZANDO MENSAJES DE CONVERSACIÓN ACTUAL');
+            setTimeout(() => forceUpdateMessages(selectedConversation), 10);
           }
         }
       )
@@ -112,22 +96,22 @@ export const useRealtimeSubscriptions = ({
           table: 'mensajes'
         },
         (payload) => {
-          console.log('🔄 Message updated:', payload);
+          console.log('🔄 Mensaje actualizado:', payload);
           
           const updatedMessage = payload.new as any;
           
-          // Actualización con debounce mínimo para updates
+          // Actualización inmediata para updates de mensajes
           if (selectedConversation && updatedMessage?.conversation_id === selectedConversation.id) {
-            console.log('🔄 Updating messages for current conversation - MESSAGE UPDATE');
-            debouncedFetchMessages(selectedConversation, 25);
+            console.log('🔄 Actualizando mensajes por UPDATE');
+            setTimeout(() => forceUpdateMessages(selectedConversation), 0);
           }
         }
       )
       .subscribe();
 
-    // Suscripción para cambios en bot status - con debounce mínimo
+    // Suscripción para cambios en bot status
     const botStatusChannel = supabase
-      .channel('bot-status-realtime-immediate')
+      .channel('bot-status-realtime-force')
       .on(
         'postgres_changes',
         {
@@ -136,7 +120,7 @@ export const useRealtimeSubscriptions = ({
           table: 'contactos_bots'
         },
         (payload) => {
-          console.log('🤖 Bot status INSERT detected:', payload);
+          console.log('🤖 Bot status INSERT:', payload);
           
           const payloadNew = payload.new as any;
           const numeroContacto = payloadNew?.numero_contacto;
@@ -161,7 +145,7 @@ export const useRealtimeSubscriptions = ({
           table: 'contactos_bots'
         },
         (payload) => {
-          console.log('🤖 Bot status DELETE detected:', payload);
+          console.log('🤖 Bot status DELETE:', payload);
           
           const payloadOld = payload.old as any;
           const numeroContacto = payloadOld?.numero_contacto;
@@ -180,23 +164,13 @@ export const useRealtimeSubscriptions = ({
       )
       .subscribe();
 
-    console.log('✅ REALTIME: Immediate real-time subscriptions ACTIVE');
+    console.log('✅ REALTIME: Suscripciones AGRESIVAS de tiempo real ACTIVAS');
 
     return () => {
-      console.log('🔴 REALTIME: Cleaning up immediate real-time subscriptions');
-      
-      // Limpiar timeouts
-      if (conversationDebounceRef.current) {
-        clearTimeout(conversationDebounceRef.current);
-      }
-      if (messageDebounceRef.current) {
-        clearTimeout(messageDebounceRef.current);
-      }
-      
-      // Remover canales
+      console.log('🔴 REALTIME: Limpiando suscripciones agresivas de tiempo real');
       supabase.removeChannel(conversationsChannel);
       supabase.removeChannel(messagesChannel);
       supabase.removeChannel(botStatusChannel);
     };
-  }, [userData, selectedInstanceId, selectedConversation?.id]);
+  }, [userData, selectedInstanceId, selectedConversation?.id, fetchConversations, fetchMessages]);
 };
