@@ -43,17 +43,17 @@ export const useCRMData = (selectedInstanceId?: string) => {
 
   // Callbacks optimizados para tiempo real
   const realtimeFetchConversations = useCallback(() => {
-    console.log('Real-time: Refreshing conversations immediately');
+    console.log('🔄 REAL-TIME: Refreshing conversations immediately');
     refreshConversations();
   }, [refreshConversations]);
 
   const realtimeFetchMessages = useCallback(async (conversation: Conversation) => {
-    console.log('Real-time: Refreshing messages immediately for conversation:', conversation.id);
+    console.log('🔄 REAL-TIME: Refreshing messages immediately for conversation:', conversation.id);
     if (selectedConversation?.id === conversation.id) {
-      // Usar fetchMessages sin cache para obtener datos frescos
-      await fetchMessages(conversation, 0, false);
+      // Usar refreshMessages que fuerza actualización sin cache
+      refreshMessages(conversation);
     }
-  }, [selectedConversation, fetchMessages]);
+  }, [selectedConversation, refreshMessages]);
 
   // Real-time subscriptions optimizadas
   useRealtimeSubscriptions({

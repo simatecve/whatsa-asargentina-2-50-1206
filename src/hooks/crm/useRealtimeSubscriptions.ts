@@ -40,9 +40,14 @@ export const useRealtimeSubscriptions = ({
   };
 
   useEffect(() => {
-    if (!userData) return;
+    if (!userData) {
+      console.log('🔴 REALTIME: No userData, no subscribing to realtime');
+      return;
+    }
 
     console.log('🔴 REALTIME: Configurando suscripciones de tiempo real AGRESIVAS...');
+    console.log('🔴 REALTIME: Selected conversation:', selectedConversation?.id);
+    console.log('🔴 REALTIME: Selected instance:', selectedInstanceId);
 
     // Suscripción CRÍTICA para conversaciones - MÁXIMA PRIORIDAD
     const conversationsChannel = supabase
@@ -57,10 +62,12 @@ export const useRealtimeSubscriptions = ({
         (payload) => {
           console.log('🚨 CONVERSACIÓN CAMBIÓ:', payload.eventType, payload);
           // Actualización INMEDIATA y FORZADA
-          setTimeout(() => forceUpdateConversations(), 0);
+          forceUpdateConversations();
         }
       )
-      .subscribe();
+      .subscribe((status) => {
+        console.log('🔗 Conversations channel status:', status);
+      });
 
     // Suscripción ULTRA-CRÍTICA para mensajes nuevos
     const messagesChannel = supabase
@@ -79,12 +86,12 @@ export const useRealtimeSubscriptions = ({
           
           // CRÍTICO: Actualizar conversaciones INMEDIATAMENTE (sin delay)
           console.log('⚡ ACTUALIZANDO CONVERSACIONES AHORA MISMO');
-          setTimeout(() => forceUpdateConversations(), 0);
+          forceUpdateConversations();
           
           // Si estamos viendo esta conversación, actualizar mensajes también
           if (selectedConversation && newMessage?.conversation_id === selectedConversation.id) {
             console.log('⚡ ACTUALIZANDO MENSAJES DE CONVERSACIÓN ACTUAL');
-            setTimeout(() => forceUpdateMessages(selectedConversation), 10);
+            forceUpdateMessages(selectedConversation);
           }
         }
       )
@@ -103,11 +110,13 @@ export const useRealtimeSubscriptions = ({
           // Actualización inmediata para updates de mensajes
           if (selectedConversation && updatedMessage?.conversation_id === selectedConversation.id) {
             console.log('🔄 Actualizando mensajes por UPDATE');
-            setTimeout(() => forceUpdateMessages(selectedConversation), 0);
+            forceUpdateMessages(selectedConversation);
           }
         }
       )
-      .subscribe();
+      .subscribe((status) => {
+        console.log('🔗 Messages channel status:', status);
+      });
 
     // Suscripción para cambios en bot status
     const botStatusChannel = supabase
@@ -162,9 +171,16 @@ export const useRealtimeSubscriptions = ({
           }
         }
       )
-      .subscribe();
+      .subscribe((status) => {
+        console.log('🤖 Bot status channel status:', status);
+      });
 
     console.log('✅ REALTIME: Suscripciones AGRESIVAS de tiempo real ACTIVAS');
+    console.log('✅ REALTIME: Channels created:', {
+      conversations: conversationsChannel.topic,
+      messages: messagesChannel.topic,
+      botStatus: botStatusChannel.topic
+    });
 
     return () => {
       console.log('🔴 REALTIME: Limpiando suscripciones agresivas de tiempo real');
