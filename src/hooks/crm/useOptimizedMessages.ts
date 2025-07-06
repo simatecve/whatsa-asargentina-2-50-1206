@@ -1,3 +1,4 @@
+
 import { useState, useCallback, useRef } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Message, Conversation } from "@/types/crm";
@@ -18,6 +19,26 @@ export const useOptimizedMessages = (setConversations: React.Dispatch<React.SetS
     invalidateMessagesCache,
     MESSAGE_PAGE_SIZE
   } = useOptimizedCache();
+
+  // Helper function to map database results to complete Message objects
+  const mapToCompleteMessage = (dbMessage: any, conversation: Conversation): Message => ({
+    id: dbMessage.id,
+    instancia: conversation.instancia_nombre,
+    numero: conversation.numero_contacto,
+    pushname: dbMessage.pushname || conversation.nombre_contacto,
+    mensaje: dbMessage.mensaje,
+    tipo_mensaje: dbMessage.tipo_mensaje,
+    estado_lectura: dbMessage.estado_lectura ?? false,
+    mensaje_id: dbMessage.mensaje_id || null,
+    archivo_url: dbMessage.archivo_url,
+    archivo_nombre: dbMessage.archivo_nombre,
+    archivo_tipo: dbMessage.archivo_tipo,
+    adjunto: dbMessage.adjunto || null,
+    direccion: dbMessage.direccion,
+    respondido_a: dbMessage.respondido_a || null,
+    created_at: dbMessage.created_at,
+    conversation_id: dbMessage.conversation_id
+  });
 
   // OPTIMIZACIÓN: Implementar cursor-based pagination
   const fetchMessages = useCallback(async (conversation: Conversation, cursor?: string, forceRefresh: boolean = false) => {
@@ -72,7 +93,11 @@ export const useOptimizedMessages = (setConversations: React.Dispatch<React.SetS
           archivo_url,
           archivo_nombre,
           archivo_tipo,
-          pushname
+          pushname,
+          estado_lectura,
+          mensaje_id,
+          adjunto,
+          respondido_a
         `) // Solo campos necesarios
         .eq('conversation_id', conversation.id)
         .order('created_at', { ascending: false })
@@ -83,8 +108,7 @@ export const useOptimizedMessages = (setConversations: React.Dispatch<React.SetS
         query = query.lt('created_at', cursor);
       }
 
-      const { data: dbMessages, error, count } = await query
-        .abortSignal(signal);
+      const { data: dbMessages, error } = await query.abortSignal(signal);
 
       if (currentConversationRef.current !== conversation.id) {
         console.log('⚠️ La conversación cambió durante el fetch, ignorando resultados');
@@ -96,8 +120,12 @@ export const useOptimizedMessages = (setConversations: React.Dispatch<React.SetS
         throw error;
       }
 
-      const fetchedMessages = (dbMessages || []).reverse();
-      const hasMore = fetchedMessages.length === MESSAGE_PAGE_SIZE;
+      // Map database results to complete Message objects
+      const fetchedMessages = (dbMessages || [])
+        .reverse()
+        .map(dbMsg => mapToCompleteMessage(dbMsg, conversation));
+      
+      const hasMore = (dbMessages || []).length === MESSAGE_PAGE_SIZE;
 
       console.log(`✅ Obtenidos ${fetchedMessages.length} mensajes optimizados`);
       
@@ -145,14 +173,22 @@ export const useOptimizedMessages = (setConversations: React.Dispatch<React.SetS
                 tipo_mensaje,
                 direccion,
                 created_at,
-                conversation_id
+                conversation_id,
+                pushname,
+                estado_lectura,
+                mensaje_id,
+                adjunto,
+                respondido_a,
+                archivo_url,
+                archivo_nombre,
+                archivo_tipo
               `)
               .eq('instancia', conversation.instancia_nombre)
               .eq('numero', conversation.numero_contacto)
               .order('created_at', { ascending: true })
               .limit(MESSAGE_PAGE_SIZE);
 
-            const fallbackMessages = dbMessages || [];
+            const fallbackMessages = (dbMessages || []).map(dbMsg => mapToCompleteMessage(dbMsg, conversation));
             console.log(`🔄 Fallback encontró ${fallbackMessages.length} mensajes`);
             setMessages([...fallbackMessages]);
             setCachedMessages(conversation.id, fallbackMessages, false);
