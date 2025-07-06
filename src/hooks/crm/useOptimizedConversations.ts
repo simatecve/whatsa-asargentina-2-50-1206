@@ -1,4 +1,3 @@
-
 import { useState, useEffect, useCallback, useRef } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Conversation } from "@/types/crm";
@@ -19,17 +18,14 @@ export const useOptimizedConversations = (selectedInstanceId?: string, userData?
 
   const fetchConversations = useCallback(async (instanceId?: string, forceRefresh: boolean = false) => {
     try {
-      // Cancelar petición anterior si existe
       if (abortControllerRef.current) {
         abortControllerRef.current.abort();
       }
 
-      // Para actualizaciones de tiempo real, SIEMPRE invalidar cache y forzar refresh
       if (forceRefresh) {
         console.log('🔄 FORCE REFRESH: Invalidando cache y obteniendo datos frescos');
         invalidateConversationsCache();
       } else {
-        // Solo usar cache en carga inicial
         const cached = getCachedConversations(instanceId || "all");
         if (cached) {
           console.log('📦 Usando conversaciones cacheadas:', cached.length);
@@ -39,7 +35,7 @@ export const useOptimizedConversations = (selectedInstanceId?: string, userData?
         }
       }
 
-      console.log('🔄 Obteniendo conversaciones FRESCAS para instancia:', instanceId);
+      console.log('🔄 Obteniendo conversaciones optimizadas para instancia:', instanceId);
       
       const { data: { session } } = await supabase.auth.getSession();
       
@@ -50,9 +46,9 @@ export const useOptimizedConversations = (selectedInstanceId?: string, userData?
         return;
       }
 
-      // Crear nuevo AbortController
       abortControllerRef.current = new AbortController();
 
+      // OPTIMIZACIÓN: Consulta consolidada con JOIN para reducir egress
       let query = supabase
         .from('conversaciones')
         .select(`
@@ -65,12 +61,13 @@ export const useOptimizedConversations = (selectedInstanceId?: string, userData?
           instancia_nombre
         `)
         .order('ultimo_mensaje_fecha', { ascending: false })
-        .limit(100);
+        .limit(50); // Límite moderado para reducir egress
 
       if (instanceId && instanceId !== "all") {
+        // OPTIMIZACIÓN: Una sola consulta combinada
         const { data: instanceData } = await supabase
           .from('instancias')
-          .select('nombre, user_id')
+          .select('nombre')
           .eq('id', instanceId)
           .eq('user_id', session.user.id)
           .single();
@@ -79,6 +76,7 @@ export const useOptimizedConversations = (selectedInstanceId?: string, userData?
           query = query.eq('instancia_nombre', instanceData.nombre);
         }
       } else {
+        // OPTIMIZACIÓN: Obtener solo nombres de instancias, no toda la data
         const { data: userInstances } = await supabase
           .from('instancias')
           .select('nombre')
@@ -111,12 +109,9 @@ export const useOptimizedConversations = (selectedInstanceId?: string, userData?
         instancia_nombre: conv.instancia_nombre
       }));
       
-      console.log('✅ Conversaciones frescas obtenidas:', formattedConversations.length);
+      console.log('✅ Conversaciones optimizadas obtenidas:', formattedConversations.length);
       
-      // SIEMPRE actualizar el cache después de obtener datos frescos
       setCachedConversations(formattedConversations, instanceId || "all");
-      
-      // FORZAR actualización del estado
       setConversations(formattedConversations);
       lastFetchRef.current = instanceId;
       
@@ -134,13 +129,13 @@ export const useOptimizedConversations = (selectedInstanceId?: string, userData?
     try {
       const now = new Date().toISOString();
       
-      // Actualizar estado local inmediatamente
       const updatedConversation = { 
         ...conversation, 
         ultimo_mensaje: message,
         ultimo_mensaje_fecha: now
       };
       
+      // Actualización optimista inmediata
       setConversations(prev => {
         const updated = prev.map(conv => 
           conv.id === conversation.id ? updatedConversation : conv
@@ -149,10 +144,9 @@ export const useOptimizedConversations = (selectedInstanceId?: string, userData?
         return [updatedConversation, ...otherConvs];
       });
 
-      // Actualizar cache
       updateConversationInCache(updatedConversation);
 
-      // Actualizar en base de datos
+      // OPTIMIZACIÓN: Solo actualizar campos necesarios
       const { error } = await supabase
         .from('conversaciones')
         .update({
@@ -160,15 +154,15 @@ export const useOptimizedConversations = (selectedInstanceId?: string, userData?
           ultimo_mensaje_fecha: now,
           updated_at: now
         })
-        .eq('id', conversation.id);
+        .eq('id', conversation.id)
+        .select('id'); // Solo retornar id para confirmar
 
       if (error) {
-        console.error('❌ Error actualizando conversación después de envío:', error);
-        // Forzar refresh en caso de error
+        console.error('❌ Error actualizando conversación:', error);
         fetchConversations(selectedInstanceId, true);
       }
     } catch (error) {
-      console.error('❌ Error actualizando conversación después de envío:', error);
+      console.error('❌ Error actualizando conversación:', error);
       fetchConversations(selectedInstanceId, true);
     }
   }, [updateConversationInCache, fetchConversations, selectedInstanceId]);
@@ -192,7 +186,7 @@ export const useOptimizedConversations = (selectedInstanceId?: string, userData?
 
   // Función para refresh FORZADO (usado por tiempo real)
   const refreshConversations = useCallback(() => {
-    console.log('🔄 REFRESH FORZADO: Actualizando conversaciones sin cache');
+    console.log('🔄 REFRESH OPTIMIZADO: Actualizando conversaciones');
     fetchConversations(selectedInstanceId, true);
   }, [fetchConversations, selectedInstanceId]);
 

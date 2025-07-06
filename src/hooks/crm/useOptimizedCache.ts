@@ -7,18 +7,21 @@ interface CacheData {
     data: Conversation[];
     timestamp: number;
     instanceId: string;
+    cursor?: string;
   } | null;
   messages: Map<string, {
     data: Message[];
     timestamp: number;
     hasMore: boolean;
     totalCount: number;
+    cursor?: string;
   }>;
   conversationCounts: Map<string, number>;
 }
 
-const CACHE_EXPIRY = 30000; // 30 segundos
-const MESSAGE_PAGE_SIZE = 50;
+// Reducir tiempo de cache para datos más frescos con menos egress
+const CACHE_EXPIRY = 15000; // 15 segundos (reducido de 30)
+const MESSAGE_PAGE_SIZE = 25; // Reducido de 50 para menos egress
 
 export const useOptimizedCache = () => {
   const cacheRef = useRef<CacheData>({
@@ -39,11 +42,12 @@ export const useOptimizedCache = () => {
     return null;
   }, [isCacheValid]);
 
-  const setCachedConversations = useCallback((conversations: Conversation[], instanceId: string) => {
+  const setCachedConversations = useCallback((conversations: Conversation[], instanceId: string, cursor?: string) => {
     cacheRef.current.conversations = {
       data: conversations,
       timestamp: Date.now(),
-      instanceId
+      instanceId,
+      cursor
     };
   }, []);
 
@@ -59,21 +63,40 @@ export const useOptimizedCache = () => {
     conversationId: string, 
     messages: Message[], 
     hasMore: boolean = false,
-    totalCount?: number
+    totalCount?: number,
+    cursor?: string
   ) => {
     cacheRef.current.messages.set(conversationId, {
       data: messages,
       timestamp: Date.now(),
       hasMore,
-      totalCount: totalCount || messages.length
+      totalCount: totalCount || messages.length,
+      cursor
     });
+  }, []);
+
+  // Implementar cache diferencial - solo actualizar mensajes cambiados
+  const updateCachedMessages = useCallback((conversationId: string, newMessages: Message[]) => {
+    const cached = cacheRef.current.messages.get(conversationId);
+    if (cached) {
+      const existingIds = new Set(cached.data.map(m => m.id));
+      const trulyNewMessages = newMessages.filter(msg => !existingIds.has(msg.id));
+      
+      if (trulyNewMessages.length > 0) {
+        const updatedMessages = [...cached.data, ...trulyNewMessages];
+        cacheRef.current.messages.set(conversationId, {
+          ...cached,
+          data: updatedMessages,
+          timestamp: Date.now()
+        });
+      }
+    }
   }, []);
 
   const appendCachedMessages = useCallback((conversationId: string, newMessages: Message[]) => {
     const cached = cacheRef.current.messages.get(conversationId);
     if (cached) {
       const combinedMessages = [...cached.data, ...newMessages];
-      // Eliminar duplicados basado en el ID
       const uniqueMessages = combinedMessages.filter((msg, index, self) => 
         index === self.findIndex(m => m.id === msg.id)
       );
@@ -142,6 +165,7 @@ export const useOptimizedCache = () => {
     setCachedConversations,
     getCachedMessages,
     setCachedMessages,
+    updateCachedMessages,
     appendCachedMessages,
     prependCachedMessages,
     invalidateConversationsCache,

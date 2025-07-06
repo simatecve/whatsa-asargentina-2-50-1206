@@ -13,7 +13,7 @@ export const useCRMData = (selectedInstanceId?: string) => {
   const [selectedConversation, setSelectedConversation] = useState<Conversation | null>(null);
   const previousInstanceId = useRef<string | undefined>(undefined);
 
-  console.log('useCRMData Debug:', {
+  console.log('useCRMData OPTIMIZADO:', {
     userData,
     selectedInstanceId,
     hasUserData: !!userData
@@ -41,15 +41,14 @@ export const useCRMData = (selectedInstanceId?: string) => {
     hasMoreMessages
   } = useOptimizedMessages(setConversations);
 
-  // Callbacks optimizados para tiempo real - FORZAR REFRESH SIN CACHE
+  // OPTIMIZACIÓN: Callbacks optimizados con debouncing
   const realtimeFetchConversations = useCallback(() => {
-    console.log('🔄 REAL-TIME: Force refreshing conversations without cache');
+    console.log('🔄 REAL-TIME OPTIMIZADO: Refrescando conversaciones');
     refreshConversations();
   }, [refreshConversations]);
 
   const realtimeFetchMessages = useCallback(async (conversation: Conversation) => {
-    console.log('🔄 REAL-TIME: Force refreshing messages without cache for conversation:', conversation.id);
-    // SIEMPRE usar refreshMessages que fuerza actualización sin cache
+    console.log('🔄 REAL-TIME OPTIMIZADO: Refrescando mensajes para:', conversation.id);
     refreshMessages(conversation);
   }, [refreshMessages]);
 
@@ -62,41 +61,39 @@ export const useCRMData = (selectedInstanceId?: string) => {
     fetchMessages: realtimeFetchMessages
   });
 
-  // Handler para cambiar la conversación seleccionada
+  // OPTIMIZACIÓN: Handler mejorado para cambio de conversación
   const handleSetSelectedConversation = useCallback((conversation: Conversation | null) => {
-    console.log('Setting selected conversation:', conversation?.id);
+    console.log('Seleccionando conversación optimizada:', conversation?.id);
     
     setSelectedConversation(conversation);
     
-    // Si hay una conversación seleccionada, cargar sus mensajes (con cache solo en carga inicial)
     if (conversation) {
-      console.log('Loading messages for conversation:', conversation.id);
+      console.log('Cargando mensajes optimizados para conversación:', conversation.id);
       fetchMessages(conversation);
     } else {
-      // Si no hay conversación seleccionada, limpiar mensajes
       clearMessages();
     }
   }, [fetchMessages, clearMessages]);
 
-  // Handler para mensajes enviados
+  // OPTIMIZACIÓN: Handler de mensajes enviados más eficiente
   const handleMessageSent = useCallback((messageText: string) => {
     if (selectedConversation) {
-      // Agregar mensaje optimísticamente
+      // Agregar optimísticamente
       addMessageToChat(selectedConversation, messageText);
     }
   }, [selectedConversation, addMessageToChat]);
 
-  // Limpiar conversación seleccionada cuando cambia la instancia
+  // OPTIMIZACIÓN: Limpiar al cambiar instancia
   useEffect(() => {
     if (previousInstanceId.current !== selectedInstanceId) {
-      console.log('Instance changed, clearing selected conversation');
+      console.log('Instancia cambiada, limpiando conversación seleccionada');
       setSelectedConversation(null);
       clearMessages();
       previousInstanceId.current = selectedInstanceId;
     }
   }, [selectedInstanceId, clearMessages]);
 
-  // El loading general solo debe incluir la carga de conversaciones
+  // Loading solo para conversaciones principales
   const loading = conversationsLoading;
 
   return {

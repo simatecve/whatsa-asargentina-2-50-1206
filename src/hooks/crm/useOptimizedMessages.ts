@@ -1,4 +1,3 @@
-
 import { useState, useCallback, useRef } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Message, Conversation } from "@/types/crm";
@@ -14,28 +13,26 @@ export const useOptimizedMessages = (setConversations: React.Dispatch<React.SetS
   const {
     getCachedMessages,
     setCachedMessages,
-    appendCachedMessages,
+    updateCachedMessages,
     prependCachedMessages,
     invalidateMessagesCache,
     MESSAGE_PAGE_SIZE
   } = useOptimizedCache();
 
-  const fetchMessages = useCallback(async (conversation: Conversation, page: number = 0, forceRefresh: boolean = false) => {
-    console.log('🔄 Iniciando fetchMessages para conversación:', conversation.id, 'página:', page, 'forceRefresh:', forceRefresh);
+  // OPTIMIZACIÓN: Implementar cursor-based pagination
+  const fetchMessages = useCallback(async (conversation: Conversation, cursor?: string, forceRefresh: boolean = false) => {
+    console.log('🔄 Iniciando fetchMessages optimizado para conversación:', conversation.id);
     
-    // Prevenir múltiples fetches simultáneos para la misma conversación
-    if (currentConversationRef.current === conversation.id && loading && page === 0) {
+    if (currentConversationRef.current === conversation.id && loading && !cursor) {
       console.log('⏳ Ya se están obteniendo mensajes para esta conversación');
       return;
     }
 
-    // Si es página 0 (inicial), verificar cache solo si NO es refresh forzado
-    if (page === 0) {
+    if (!cursor) {
       currentConversationRef.current = conversation.id;
       
-      // Para actualizaciones de tiempo real, SIEMPRE invalidar cache primero
       if (forceRefresh) {
-        console.log('🔄 FORCE REFRESH: Invalidando cache de mensajes para datos frescos');
+        console.log('🔄 FORCE REFRESH: Invalidando cache de mensajes');
         invalidateMessagesCache(conversation.id);
       } else {
         const cached = getCachedMessages(conversation.id);
@@ -53,7 +50,6 @@ export const useOptimizedMessages = (setConversations: React.Dispatch<React.SetS
     setLoading(true);
 
     try {
-      // Cancelar petición anterior
       if (abortControllerRef.current) {
         abortControllerRef.current.abort();
       }
@@ -61,19 +57,35 @@ export const useOptimizedMessages = (setConversations: React.Dispatch<React.SetS
       abortControllerRef.current = new AbortController();
       const signal = abortControllerRef.current.signal;
 
-      console.log('🔄 Obteniendo mensajes FRESCOS para conversación:', conversation.id);
+      console.log('🔄 Obteniendo mensajes optimizados para conversación:', conversation.id);
       
-      const offset = page * MESSAGE_PAGE_SIZE;
-      
-      const { data: dbMessages, error, count } = await supabase
+      // OPTIMIZACIÓN: Usar cursor-based pagination en lugar de offset
+      let query = supabase
         .from('mensajes')
-        .select('*', { count: 'exact' })
+        .select(`
+          id,
+          mensaje,
+          tipo_mensaje,
+          direccion,
+          created_at,
+          conversation_id,
+          archivo_url,
+          archivo_nombre,
+          archivo_tipo,
+          pushname
+        `) // Solo campos necesarios
         .eq('conversation_id', conversation.id)
         .order('created_at', { ascending: false })
-        .range(offset, offset + MESSAGE_PAGE_SIZE - 1)
+        .limit(MESSAGE_PAGE_SIZE);
+
+      // Implementar cursor-based pagination
+      if (cursor) {
+        query = query.lt('created_at', cursor);
+      }
+
+      const { data: dbMessages, error, count } = await query
         .abortSignal(signal);
 
-      // Verificar si todavía es la conversación actual
       if (currentConversationRef.current !== conversation.id) {
         console.log('⚠️ La conversación cambió durante el fetch, ignorando resultados');
         return;
@@ -84,20 +96,23 @@ export const useOptimizedMessages = (setConversations: React.Dispatch<React.SetS
         throw error;
       }
 
-      const fetchedMessages = (dbMessages || []).reverse(); // Invertir para orden cronológico
-      const totalCount = count || 0;
-      const hasMore = offset + MESSAGE_PAGE_SIZE < totalCount;
+      const fetchedMessages = (dbMessages || []).reverse();
+      const hasMore = fetchedMessages.length === MESSAGE_PAGE_SIZE;
 
-      console.log(`✅ Obtenidos ${fetchedMessages.length} mensajes FRESCOS para conversación ${conversation.id}, página ${page}`);
+      console.log(`✅ Obtenidos ${fetchedMessages.length} mensajes optimizados`);
       
-      if (page === 0) {
-        // Primera página - reemplazar completamente y FORZAR actualización
-        console.log('🔄 FORCE UPDATE: Setting fresh messages');
-        setMessages([...fetchedMessages]); // Crear nuevo array para forzar re-render
-        // SIEMPRE cachear después de obtener datos frescos
-        setCachedMessages(conversation.id, fetchedMessages, hasMore, totalCount);
+      if (!cursor) {
+        // Primera carga
+        setMessages([...fetchedMessages]);
+        setCachedMessages(
+          conversation.id, 
+          fetchedMessages, 
+          hasMore, 
+          fetchedMessages.length,
+          fetchedMessages[0]?.created_at
+        );
       } else {
-        // Páginas adicionales - prepender
+        // Cargar más mensajes
         setMessages(prev => {
           const combined = [...fetchedMessages, ...prev];
           const unique = combined.filter((msg, index, self) => 
@@ -111,8 +126,7 @@ export const useOptimizedMessages = (setConversations: React.Dispatch<React.SetS
 
       setHasMoreMessages(hasMore);
 
-      // Marcar como leído solo en la primera página
-      if (page === 0) {
+      if (!cursor) {
         markAsRead(conversation);
       }
 
@@ -120,12 +134,19 @@ export const useOptimizedMessages = (setConversations: React.Dispatch<React.SetS
       if (error.name !== 'AbortError') {
         console.error('❌ Error obteniendo mensajes:', error);
         
-        // Solo intentar fallback si es la conversación actual
-        if (currentConversationRef.current === conversation.id && page === 0) {
+        if (currentConversationRef.current === conversation.id && !cursor) {
+          // Fallback optimizado - solo campos esenciales
           try {
             const { data: dbMessages } = await supabase
               .from('mensajes')
-              .select('*')
+              .select(`
+                id,
+                mensaje,
+                tipo_mensaje,
+                direccion,
+                created_at,
+                conversation_id
+              `)
               .eq('instancia', conversation.instancia_nombre)
               .eq('numero', conversation.numero_contacto)
               .order('created_at', { ascending: true })
@@ -133,7 +154,7 @@ export const useOptimizedMessages = (setConversations: React.Dispatch<React.SetS
 
             const fallbackMessages = dbMessages || [];
             console.log(`🔄 Fallback encontró ${fallbackMessages.length} mensajes`);
-            setMessages([...fallbackMessages]); // Forzar nuevo array
+            setMessages([...fallbackMessages]);
             setCachedMessages(conversation.id, fallbackMessages, false);
           } catch (fallbackError) {
             console.error('❌ Fallback también falló:', fallbackError);
@@ -146,12 +167,15 @@ export const useOptimizedMessages = (setConversations: React.Dispatch<React.SetS
     }
   }, [getCachedMessages, setCachedMessages, prependCachedMessages, invalidateMessagesCache, MESSAGE_PAGE_SIZE]);
 
+  // OPTIMIZACIÓN: Cargar más mensajes con cursor
   const loadMoreMessages = useCallback(async (conversation: Conversation) => {
     if (!hasMoreMessages || loading) return;
 
-    const currentPage = Math.ceil(messages.length / MESSAGE_PAGE_SIZE);
-    await fetchMessages(conversation, currentPage, false);
-  }, [fetchMessages, hasMoreMessages, loading, messages.length, MESSAGE_PAGE_SIZE]);
+    const oldestMessage = messages[0];
+    if (oldestMessage) {
+      await fetchMessages(conversation, oldestMessage.created_at, false);
+    }
+  }, [fetchMessages, hasMoreMessages, loading, messages]);
 
   const addMessageToChat = useCallback((conversation: Conversation, messageText: string) => {
     const newMessage: Message = {
@@ -173,14 +197,14 @@ export const useOptimizedMessages = (setConversations: React.Dispatch<React.SetS
       conversation_id: conversation.id
     };
 
-    // FORZAR actualización inmediata del estado con nuevo array
+    // OPTIMIZACIÓN: Usar función de actualización diferencial
     setMessages(prev => [...prev, newMessage]);
-    appendCachedMessages(conversation.id, [newMessage]);
-  }, [appendCachedMessages]);
+    updateCachedMessages(conversation.id, [newMessage]);
+  }, [updateCachedMessages]);
 
   const markAsRead = useCallback(async (conversation: Conversation) => {
     try {
-      // Actualizar estado local inmediatamente
+      // Actualización optimista inmediata
       setConversations(prev => 
         prev.map(conv => 
           conv.id === conversation.id
@@ -189,13 +213,15 @@ export const useOptimizedMessages = (setConversations: React.Dispatch<React.SetS
         )
       );
 
-      // Actualizar en base de datos
-      const { error } = await supabase.rpc('mark_conversation_as_read', {
-        conversation_uuid: conversation.id
-      });
+      // OPTIMIZACIÓN: Solo ejecutar si realmente hay mensajes no leídos
+      if (conversation.mensajes_no_leidos > 0) {
+        const { error } = await supabase.rpc('mark_conversation_as_read', {
+          conversation_uuid: conversation.id
+        });
 
-      if (error) {
-        console.error('Error marcando conversación como leída:', error);
+        if (error) {
+          console.error('Error marcando conversación como leída:', error);
+        }
       }
     } catch (error) {
       console.error('Error marcando como leída:', error);
@@ -213,10 +239,9 @@ export const useOptimizedMessages = (setConversations: React.Dispatch<React.SetS
     }
   }, []);
 
-  // Función para refresh FORZADO (usado por tiempo real)
   const refreshMessages = useCallback((conversation: Conversation) => {
-    console.log('🔄 REFRESH FORZADO: Actualizando mensajes sin cache');
-    fetchMessages(conversation, 0, true);
+    console.log('🔄 REFRESH OPTIMIZADO: Actualizando mensajes sin cache');
+    fetchMessages(conversation, undefined, true);
   }, [fetchMessages]);
 
   return {
